@@ -15,7 +15,8 @@ impl BootRom {
         self.active
     }
 
-    pub fn write(&mut self, _: u16, val: u8) {
+    // Boot ROM に対する書き込みができるわけではなさそうなので、addr, val は Pheripherals に移動させた方が良いかも？
+    pub fn write(&mut self, addr: u16, val: u8) {
         self.active &= val == 0;
     }
 }
