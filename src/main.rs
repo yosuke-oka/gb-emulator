@@ -2,6 +2,7 @@ mod bootrom;
 mod cpu;
 mod hram;
 mod peripherals;
+mod ppu;
 mod wram;
 
 fn main() {
