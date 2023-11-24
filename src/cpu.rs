@@ -19,7 +19,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn emulate_cycle(&mut self, bus: &Peripherals) {
+    pub fn emulate_cycle(&mut self, bus: &mut Peripherals) {
         self.decode(bus);
     }
 }
