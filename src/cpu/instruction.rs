@@ -238,7 +238,6 @@ impl Cpu {
     // push val onto stack
     pub fn push(&mut self, bus: &mut Peripherals, src: Reg16) {
         static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
         static VAL16: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
             0 => {
@@ -261,7 +260,6 @@ impl Cpu {
     pub fn push16(&mut self, bus: &mut Peripherals, val: u16) -> Option<()> {
         static STEP: AtomicU8 = AtomicU8::new(0);
         static VAL8: AtomicU8 = AtomicU8::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
             0 => {
                 // cycle count is memory accsess + 1
@@ -327,8 +325,6 @@ impl Cpu {
     // jump relative
     pub fn jr(&mut self, bus: &Peripherals) {
         static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
             0 => {
                 if let Some(val) = self.read8(bus, Imm8) {

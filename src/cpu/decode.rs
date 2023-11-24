@@ -13,7 +13,6 @@ impl Cpu {
         }
         match self.ctx.opcode {
             0x00 => self.nop(bus),
-            0x00 => self.nop(bus),
             //0x10 => self.stop(bus),
             0x20 => self.jr_c(bus, Cond::NZ),
             0x30 => self.jr_c(bus, Cond::NC),

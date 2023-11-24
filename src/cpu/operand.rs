@@ -253,7 +253,6 @@ impl IO8<Indirect> for Cpu {
 
     fn write8(&mut self, bus: &mut Peripherals, dst: Indirect, val: u8) -> Option<()> {
         static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
         match STEP.load(Relaxed) {
             0 => {
                 match dst {
