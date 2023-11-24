@@ -14,7 +14,7 @@ struct Ctx {
 }
 
 pub struct Cpu {
-    regiters: Registers,
+    registers: Registers,
     ctx: Ctx,
 }
 

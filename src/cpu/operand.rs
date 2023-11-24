@@ -76,44 +76,44 @@ pub enum Cond {
 impl IO8<Reg8> for Cpu {
     fn read8(&mut self, _: &Peripherals, src: Reg8) -> Option<u8> {
         match src {
-            Reg8::A => Some(self.regiters.a),
-            Reg8::B => Some(self.regiters.b),
-            Reg8::C => Some(self.regiters.c),
-            Reg8::D => Some(self.regiters.d),
-            Reg8::E => Some(self.regiters.e),
-            Reg8::H => Some(self.regiters.h),
-            Reg8::L => Some(self.regiters.l),
+            Reg8::A => Some(self.registers.a),
+            Reg8::B => Some(self.registers.b),
+            Reg8::C => Some(self.registers.c),
+            Reg8::D => Some(self.registers.d),
+            Reg8::E => Some(self.registers.e),
+            Reg8::H => Some(self.registers.h),
+            Reg8::L => Some(self.registers.l),
         }
     }
 
     fn write8(&mut self, _: &mut Peripherals, dst: Reg8, val: u8) -> Option<()> {
         match dst {
             Reg8::A => {
-                self.regiters.a = val;
+                self.registers.a = val;
                 Some(())
             }
             Reg8::B => {
-                self.regiters.b = val;
+                self.registers.b = val;
                 Some(())
             }
             Reg8::C => {
-                self.regiters.c = val;
+                self.registers.c = val;
                 Some(())
             }
             Reg8::D => {
-                self.regiters.d = val;
+                self.registers.d = val;
                 Some(())
             }
             Reg8::E => {
-                self.regiters.e = val;
+                self.registers.e = val;
                 Some(())
             }
             Reg8::H => {
-                self.regiters.h = val;
+                self.registers.h = val;
                 Some(())
             }
             Reg8::L => {
-                self.regiters.l = val;
+                self.registers.l = val;
                 Some(())
             }
         }
@@ -123,34 +123,34 @@ impl IO8<Reg8> for Cpu {
 impl IO16<Reg16> for Cpu {
     fn read16(&mut self, _: &Peripherals, src: Reg16) -> Option<u16> {
         match src {
-            Reg16::AF => Some(self.regiters.af()),
-            Reg16::BC => Some(self.regiters.bc()),
-            Reg16::DE => Some(self.regiters.de()),
-            Reg16::HL => Some(self.regiters.hl()),
-            Reg16::SP => Some(self.regiters.sp),
+            Reg16::AF => Some(self.registers.af()),
+            Reg16::BC => Some(self.registers.bc()),
+            Reg16::DE => Some(self.registers.de()),
+            Reg16::HL => Some(self.registers.hl()),
+            Reg16::SP => Some(self.registers.sp),
         }
     }
 
     fn write16(&mut self, _: &mut Peripherals, dst: Reg16, val: u16) -> Option<()> {
         match dst {
             Reg16::AF => {
-                self.regiters.write_af(val);
+                self.registers.write_af(val);
                 Some(())
             }
             Reg16::BC => {
-                self.regiters.write_bc(val);
+                self.registers.write_bc(val);
                 Some(())
             }
             Reg16::DE => {
-                self.regiters.write_de(val);
+                self.registers.write_de(val);
                 Some(())
             }
             Reg16::HL => {
-                self.regiters.write_hl(val);
+                self.registers.write_hl(val);
                 Some(())
             }
             Reg16::SP => {
-                self.regiters.sp = val;
+                self.registers.sp = val;
                 Some(())
             }
         }
@@ -163,8 +163,8 @@ impl IO8<Imm8> for Cpu {
         static VAL8: AtomicU8 = AtomicU8::new(0);
         match STEP.load(Relaxed) {
             0 => {
-                VAL8.store(bus.read(self.regiters.pc), Relaxed);
-                self.regiters.pc = self.regiters.pc.wrapping_add(1);
+                VAL8.store(bus.read(self.registers.pc), Relaxed);
+                self.registers.pc = self.registers.pc.wrapping_add(1);
                 STEP.fetch_add(1, Relaxed);
                 None
             }
@@ -223,18 +223,18 @@ impl IO8<Indirect> for Cpu {
             0 => {
                 VAL8.store(
                     match src {
-                        Indirect::BC => bus.read(self.regiters.bc()),
-                        Indirect::DE => bus.read(self.regiters.de()),
-                        Indirect::HL => bus.read(self.regiters.hl()),
-                        Indirect::CFF => bus.read(0xFF00 | u16::from(self.regiters.c)),
+                        Indirect::BC => bus.read(self.registers.bc()),
+                        Indirect::DE => bus.read(self.registers.de()),
+                        Indirect::HL => bus.read(self.registers.hl()),
+                        Indirect::CFF => bus.read(0xFF00 | u16::from(self.registers.c)),
                         Indirect::HLD => {
-                            let addr = self.regiters.hl();
-                            self.regiters.write_hl(addr.wrapping_sub(1));
+                            let addr = self.registers.hl();
+                            self.registers.write_hl(addr.wrapping_sub(1));
                             bus.read(addr)
                         }
                         Indirect::HLI => {
-                            let addr = self.regiters.hl();
-                            self.regiters.write_hl(addr.wrapping_add(1));
+                            let addr = self.registers.hl();
+                            self.registers.write_hl(addr.wrapping_add(1));
                             bus.read(addr)
                         }
                     },
@@ -257,18 +257,18 @@ impl IO8<Indirect> for Cpu {
         match STEP.load(Relaxed) {
             0 => {
                 match dst {
-                    Indirect::BC => bus.write(self.regiters.bc(), val),
-                    Indirect::DE => bus.write(self.regiters.de(), val),
-                    Indirect::HL => bus.write(self.regiters.hl(), val),
-                    Indirect::CFF => bus.write(0xFF00 | u16::from(self.regiters.c), val),
+                    Indirect::BC => bus.write(self.registers.bc(), val),
+                    Indirect::DE => bus.write(self.registers.de(), val),
+                    Indirect::HL => bus.write(self.registers.hl(), val),
+                    Indirect::CFF => bus.write(0xFF00 | u16::from(self.registers.c), val),
                     Indirect::HLD => {
-                        let addr = self.regiters.hl();
-                        self.regiters.write_hl(addr.wrapping_sub(1));
+                        let addr = self.registers.hl();
+                        self.registers.write_hl(addr.wrapping_sub(1));
                         bus.write(addr, val)
                     }
                     Indirect::HLI => {
-                        let addr = self.regiters.hl();
-                        self.regiters.write_hl(addr.wrapping_add(1));
+                        let addr = self.registers.hl();
+                        self.registers.write_hl(addr.wrapping_add(1));
                         bus.write(addr, val)
                     }
                 }
