@@ -1,3 +1,7 @@
+pub const LCD_WIDTH: usize = 160;
+pub const LCD_HEIGHT: usize = 144;
+pub const LCD_PIXELS: usize = LCD_WIDTH * LCD_HEIGHT;
+
 const LCDC_ADDR: u16 = 0xFF40;
 const STAT_ADDR: u16 = 0xFF41;
 const SCY_ADDR: u16 = 0xFF42;
@@ -55,6 +59,8 @@ pub struct Ppu {
     wx: u8,                  // window x
     vram: Box<[u8; 0x2000]>, // 8 KiB video ram
     oam: Box<[u8; 0xA0]>,    // 160 B object attribute memory
+    buffer: Box<[u8; LCD_PIXELS * 4]>,
+    cycles: u8,
 }
 
 impl Ppu {
@@ -74,6 +80,8 @@ impl Ppu {
             wx: 0,
             vram: Box::new([0; 0x2000]),
             oam: Box::new([0; 0xA0]),
+            buffer: Box::new([0; LCD_PIXELS * 4]),
+            cycles: 20, // OAM scan mode needs 20 cycles
         }
     }
 
@@ -135,5 +143,106 @@ impl Ppu {
             }
             _ => panic!("invalid ppu address: 0x{:04X}", addr),
         }
+    }
+
+    // tile data: 16 bytes * 0x180
+    // tile: 16 bytes
+    // pixex: 2 bits
+
+    fn get_pixel_from_tile(&self, tile_idx: usize, row: u8, col: u8) -> u8 {
+        let r = (row * 2) as usize; // 2 bytes per row
+        let c = (7 - col) as usize; // col is (7-col) bit
+        let tile_addr = tile_idx * 16;
+        let low = self.vram[(tile_addr | r) & 0x1FFF];
+        let high = self.vram[(tile_addr | (r + 1)) & 0x1FFF];
+        ((high >> c) & 1) << 1 | ((low >> c) & 1)
+    }
+
+    fn get_tile_idx_from_tile_map(&self, tile_map: bool, row: u8, col: u8) -> usize {
+        let start_addr = 0x1800 | ((tile_map as usize) << 10);
+        let ret = self.vram[start_addr | ((row as usize) * 32) + (col as usize) & 0x3FF];
+        if self.lcdc & TILE_DATA_ADDRESSING_MODE == 0 {
+            // 0x8800-0x97FF
+            (ret as i8 as i16 + 128) as usize
+        } else {
+            // 0x8000-0x8FFF
+            ret as usize
+        }
+    }
+
+    fn render_bg(&mut self) {
+        if self.lcdc & BG_WINDOW_ENABLE == 0 {
+            return;
+        }
+        let y = self.ly.wrapping_add(self.scy);
+        for i in 0..LCD_WIDTH {
+            let x = (i as u8).wrapping_add(self.scx);
+            let tile_idx =
+                self.get_tile_idx_from_tile_map(self.lcdc & BG_TILE_MAP != 0, y >> 3, x >> 3);
+            let pixel = self.get_pixel_from_tile(tile_idx, y & 7, x & 7);
+            self.buffer[LCD_WIDTH * self.ly as usize + i] = match (self.bgp >> (pixel << 1)) & 0b11
+            {
+                0b00 => 0xFF,
+                0b01 => 0xAA,
+                0b10 => 0x55,
+                0b11 => 0x00,
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    fn check_lyc_eq_ly(&mut self) {
+        if self.ly == self.lyc {
+            self.stat |= LYC_LY_COINCIDENCE;
+        } else {
+            self.stat &= !LYC_LY_COINCIDENCE;
+        }
+    }
+
+    pub fn emulate_cycle(&mut self) -> bool {
+        if self.lcdc & PPU_ENABLE == 0 {
+            return false;
+        }
+
+        self.cycles -= 1;
+        if self.cycles > 0 {
+            return false;
+        }
+
+        let mut need_vsync = false;
+
+        match self.mode {
+            Mode::HBlank => {
+                self.ly += 1;
+                if self.ly < 144 {
+                    self.mode = Mode::OAMScan;
+                    self.cycles = 20;
+                } else {
+                    self.mode = Mode::VBlank;
+                    self.cycles = 114
+                }
+                self.check_lyc_eq_ly();
+            }
+            Mode::VBlank => {
+                self.ly += 1;
+                if self.ly > 153 {
+                    self.ly = 0;
+                    self.mode = Mode::OAMScan;
+                    self.cycles = 20;
+                    need_vsync = true;
+                }
+                self.check_lyc_eq_ly();
+            }
+            Mode::OAMScan => {
+                self.mode = Mode::Drawing;
+                self.cycles = 43;
+            }
+            Mode::Drawing => {
+                self.render_bg();
+                self.mode = Mode::HBlank;
+                self.cycles = 51;
+            }
+        }
+        need_vsync
     }
 }
