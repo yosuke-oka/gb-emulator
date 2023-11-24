@@ -1,11 +1,14 @@
+use crate::cpu::Cpu;
+use crate::peripherals::Peripherals;
 use std::sync::atomic::{AtomicU16, AtomicU8, Ordering::Relaxed};
+
 pub trait IO8<T: Copy> {
-    fn read8(&self, bus: &Peripherals, src: T) -> Option<u8>;
+    fn read8(&mut self, bus: &Peripherals, src: T) -> Option<u8>;
     fn write8(&mut self, bus: &mut Peripherals, dst: T, val: u8) -> Option<()>;
 }
 
 pub trait IO16<T: Copy> {
-    fn read16(&self, bus: &Peripherals, src: T) -> Option<u16>;
+    fn read16(&mut self, bus: &Peripherals, src: T) -> Option<u16>;
     fn write16(&mut self, bus: &mut Peripherals, dst: T, val: u16) -> Option<()>;
 }
 
@@ -118,7 +121,7 @@ impl IO8<Reg8> for Cpu {
 }
 
 impl IO16<Reg16> for Cpu {
-    fn read16(&self, _: &Peripherals, src: Reg16) -> Option<u16> {
+    fn read16(&mut self, _: &Peripherals, src: Reg16) -> Option<u16> {
         match src {
             Reg16::AF => Some(self.regiters.af()),
             Reg16::BC => Some(self.regiters.bc()),
@@ -160,7 +163,7 @@ impl IO8<Imm8> for Cpu {
         static VAL8: AtomicU8 = AtomicU8::new(0);
         match STEP.load(Relaxed) {
             0 => {
-                VAL8.store(bus.read(self.resiters.pc), Relaxed);
+                VAL8.store(bus.read(self.regiters.pc), Relaxed);
                 self.regiters.pc = self.regiters.pc.wrapping_add(1);
                 STEP.fetch_add(1, Relaxed);
                 None
@@ -180,7 +183,7 @@ impl IO8<Imm8> for Cpu {
 
 // 2 M-cycle
 impl IO16<Imm16> for Cpu {
-    fn read16(&self, bus: &Peripherals, _: Imm16) -> Option<u16> {
+    fn read16(&mut self, bus: &Peripherals, _: Imm16) -> Option<u16> {
         static STEP: AtomicU8 = AtomicU8::new(0);
         static VAL8: AtomicU8 = AtomicU8::new(0);
         static VAL16: AtomicU16 = AtomicU16::new(0);
