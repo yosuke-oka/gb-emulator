@@ -272,38 +272,38 @@ impl Cpu {
         }
     }
 
-    pub fn cb_decode(&mut self, bus: &Peripherals) {
+    pub fn cb_decode(&mut self, bus: &mut Peripherals) {
         match self.ctx.opcode {
             //0x00 => self.rlc(bus, Reg8::B),
-            //0x10 => self.rl(bus, Reg8::B),
+            0x10 => self.rl(bus, Reg8::B),
             //0x20 => self.sla(bus, Reg8::B),
             //0x30 => self.swap(bus, Reg8::B),
             //0x01 => self.rlc(bus, Reg8::C),
-            //0x11 => self.rl(bus, Reg8::C),
+            0x11 => self.rl(bus, Reg8::C),
             //0x21 => self.sla(bus, Reg8::C),
             //0x31 => self.swap(bus, Reg8::C),
             //0x02 => self.rlc(bus, Reg8::D),
-            //0x12 => self.rl(bus, Reg8::D),
+            0x12 => self.rl(bus, Reg8::D),
             //0x22 => self.sla(bus, Reg8::D),
             //0x32 => self.swap(bus, Reg8::D),
             //0x03 => self.rlc(bus, Reg8::E),
-            //0x13 => self.rl(bus, Reg8::E),
+            0x13 => self.rl(bus, Reg8::E),
             //0x23 => self.sla(bus, Reg8::E),
             //0x33 => self.swap(bus, Reg8::E),
             //0x04 => self.rlc(bus, Reg8::H),
-            //0x14 => self.rl(bus, Reg8::H),
+            0x14 => self.rl(bus, Reg8::H),
             //0x24 => self.sla(bus, Reg8::H),
             //0x34 => self.swap(bus, Reg8::H),
             //0x05 => self.rlc(bus, Reg8::L),
-            //0x15 => self.rl(bus, Reg8::L),
+            0x15 => self.rl(bus, Reg8::L),
             //0x25 => self.sla(bus, Reg8::L),
             //0x35 => self.swap(bus, Reg8::L),
             //0x06 => self.rlc(bus, Indirect::HL),
-            //0x16 => self.rl(bus, Indirect::HL),
+            0x16 => self.rl(bus, Indirect::HL),
             //0x26 => self.sla(bus, Indirect::HL),
             //0x36 => self.swap(bus, Indirect::HL),
             //0x07 => self.rlc(bus, Reg8::A),
-            //0x17 => self.rl(bus, Reg8::A),
+            0x17 => self.rl(bus, Reg8::A),
             //0x27 => self.sla(bus, Reg8::A),
             //0x37 => self.swap(bus, Reg8::A),
             //0x08 => self.rrc(bus, Reg8::B),
@@ -530,11 +530,11 @@ impl Cpu {
             //0xDF => self.set(bus, 3, Reg8::A),
             //0xEF => self.set(bus, 5, Reg8::A),
             //0xFF => self.set(bus, 7, Reg8::A),
-            _ => panic!("Not implemented: {:02X}", self.ctx.opcode),
+            _ => panic!("Not implemented: {:02X} cb_decode", self.ctx.opcode),
         }
     }
 
-    pub fn cb_prefixed(&mut self, bus: &Peripherals) {
+    pub fn cb_prefixed(&mut self, bus: &mut Peripherals) {
         if let Some(v) = self.read8(bus, Imm8) {
             self.ctx.opcode = v;
             self.ctx.cb = true;
