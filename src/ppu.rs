@@ -1,3 +1,5 @@
+use std::iter;
+
 pub const LCD_WIDTH: usize = 160;
 pub const LCD_HEIGHT: usize = 144;
 pub const LCD_PIXELS: usize = LCD_WIDTH * LCD_HEIGHT;
@@ -244,5 +246,13 @@ impl Ppu {
             }
         }
         need_vsync
+    }
+
+    // For LCD
+    pub fn pixel_buffer(&self) -> Box<[u8]> {
+        self.buffer
+            .iter()
+            .flat_map(|&e| iter::repeat(e.into()).take(3))
+            .collect::<Box<[u8]>>()
     }
 }
