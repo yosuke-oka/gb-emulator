@@ -201,6 +201,8 @@ impl Ppu {
         }
     }
 
+    // drawing (mode: 3) のときは OAM と VRAM にアクセスできないので、
+    // M-cycle ごとの厳密な実装ではなく、 drawing の際にレンダリングすることで実装を簡略化している
     pub fn emulate_cycle(&mut self) -> bool {
         if self.lcdc & PPU_ENABLE == 0 {
             return false;
@@ -232,6 +234,8 @@ impl Ppu {
                     self.mode = Mode::OAMScan;
                     self.cycles = 20;
                     need_vsync = true;
+                } else {
+                    self.cycles = 114;
                 }
                 self.check_lyc_eq_ly();
             }
