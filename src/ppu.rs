@@ -152,9 +152,9 @@ impl Ppu {
     // pixex: 2 bits
 
     fn get_pixel_from_tile(&self, tile_idx: usize, row: u8, col: u8) -> u8 {
-        let r = (row * 2) as usize; // 2 bytes per row
+        let r = (row << 1) as usize; // 2 bytes per row
         let c = (7 - col) as usize; // col is (7-col) bit
-        let tile_addr = tile_idx * 16;
+        let tile_addr = tile_idx << 4;
         let low = self.vram[(tile_addr | r) & 0x1FFF];
         let high = self.vram[(tile_addr | (r + 1)) & 0x1FFF];
         ((high >> c) & 1) << 1 | ((low >> c) & 1)
@@ -162,10 +162,10 @@ impl Ppu {
 
     fn get_tile_idx_from_tile_map(&self, tile_map: bool, row: u8, col: u8) -> usize {
         let start_addr = 0x1800 | ((tile_map as usize) << 10);
-        let ret = self.vram[start_addr | ((row as usize) * 32) + (col as usize) & 0x3FF];
+        let ret = self.vram[start_addr | ((row as usize) << 5) + col as usize & 0x3FF];
         if self.lcdc & TILE_DATA_ADDRESSING_MODE == 0 {
             // 0x8800-0x97FF
-            (ret as i8 as i16 + 128) as usize
+            (ret as i8 as i16 + 0x100) as usize
         } else {
             // 0x8000-0x8FFF
             ret as usize
