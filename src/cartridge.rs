@@ -11,7 +11,7 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn new(rom: Box<[u8]>) -> Self {
-        let header = CartridgeHeader::new(rom[0x100..=0x150].try_into().unwrap());
+        let header = CartridgeHeader::new(rom[0x100..0x150].try_into().unwrap());
         let title = std::str::from_utf8(&header.title).unwrap();
         let rom_size = header.rom_size();
         let sram_size = header.sram_size();

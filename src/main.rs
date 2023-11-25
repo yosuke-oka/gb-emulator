@@ -29,7 +29,7 @@ fn main() {
         eprintln!("no cartridge\nUsage: {} <cartridge file>", args[0]);
     };
     let cartridge_file = &args[1];
-    let rom = file2vec("dmg_bootrom.bin");
-    let bootrom = bootrom::BootRom::new(rom.into_boxed_slice());
-    GameBoy::new(bootrom).run();
+    let cartridge = cartridge::Cartridge::new(file2vec(cartridge_file).into());
+    let bootrom = bootrom::BootRom::new(file2vec("dmg_bootrom.bin").into());
+    GameBoy::new(bootrom, cartridge).run();
 }

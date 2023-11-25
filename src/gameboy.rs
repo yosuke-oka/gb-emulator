@@ -2,10 +2,11 @@ use sdl2::{self, event::Event, keyboard::Keycode, Sdl};
 
 use std::time;
 
-use crate::{bootrom::BootRom, cpu::Cpu, lcd::LCD, peripherals::Peripherals};
-pub const CPU_CLOCK: u128 = 4_194_304;
+use crate::{bootrom::BootRom, cartridge::Cartridge, cpu::Cpu, lcd::LCD, peripherals::Peripherals};
+
+pub const CPU_CLOCK_HZ: u128 = 4_194_304;
 pub const M_CYCLE_CLOCK: u128 = 4;
-const M_CYCLE_NANOS: u128 = 1_000_000_000 / CPU_CLOCK * M_CYCLE_CLOCK;
+const M_CYCLE_NANOS: u128 = M_CYCLE_CLOCK * 1_000_000_000 / CPU_CLOCK_HZ;
 
 pub struct GameBoy {
     cpu: Cpu,
@@ -15,11 +16,11 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(bootrom: BootRom) -> Self {
+    pub fn new(bootrom: BootRom, cartridge: Cartridge) -> Self {
         let sdl = sdl2::init().expect("failed to initialize SDL");
         Self {
             cpu: Cpu::new(),
-            peripherals: Peripherals::new(bootrom),
+            peripherals: Peripherals::new(bootrom, cartridge),
             lcd: LCD::new(&sdl, 4),
             sdl,
         }
