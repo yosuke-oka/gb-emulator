@@ -3,6 +3,7 @@ use std::{env, fs::File, io::Read};
 use gameboy::GameBoy;
 
 mod bootrom;
+mod cartridge;
 mod cpu;
 mod gameboy;
 mod hram;

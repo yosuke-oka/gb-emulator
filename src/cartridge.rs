@@ -1,50 +1,73 @@
-#[repr(C)]
-pub struct CartridgeHeader {
-    entry_point: [u8; 4],
-    logo: [u8; 48],
-    title: [u8; 11],
-    maker_code: [u8; 4],
-    cgb_flag: u8,
-    new_licensee_code: [u8; 2],
-    sgb_flag: u8,
-    cartridge_type: u8,
-    rom_size: u8,
-    sram_size: u8,
-    destination_code: u8,
-    old_licensee_code: u8,
-    game_version: u8,
-    header_checksum: u8,
-    global_checksum: [u8; 2],
+use self::{cartridge_header::CartridgeHeader, mbc::Mbc};
+
+mod cartridge_header;
+mod mbc;
+
+pub struct Cartridge {
+    rom: Box<[u8]>,
+    sram: Box<[u8]>,
+    mbc: Mbc,
 }
 
-impl CartridgeHeader {
-    fn new(data: [u8; 0x50]) -> Self {
-        let ret = unsafe { std::mem::transmute::<[u8; 0x50], Self>(data) };
-        let mut checksum = 0u8;
-        for i in 0x34..=0x4C {
-            checksum = checksum.wrapping_sub(data[i]).wrapping_sub(1);
-        }
-        assert_eq!(checksum, ret.header_checksum, "invalid header checksum");
-        ret
-    }
-    fn rom_size(&self) -> usize {
-        assert!(
-            self.rom_size <= 0x08,
-            "invalid rom size: 0x{:02X}",
-            self.rom_size
+impl Cartridge {
+    pub fn new(rom: Box<[u8]>) -> Self {
+        let header = CartridgeHeader::new(rom[0x100..=0x150].try_into().unwrap());
+        let title = std::str::from_utf8(&header.title).unwrap();
+        let rom_size = header.rom_size();
+        let sram_size = header.sram_size();
+        let mbc = Mbc::new(header.cartridge_type, rom_size >> 14); // rom bank is 16 KiB
+        println!(
+            "title: {}, type: {}, rom_size: {} B, sram_size: {} B",
+            title,
+            match mbc {
+                Mbc::NoMbc => "ROM ONLY",
+                Mbc::Mbc1 { .. } => "MBC1",
+            },
+            rom_size,
+            sram_size
         );
-        1 << (15 + self.rom_size)
+        assert_eq!(rom.len(), rom_size, "invalid rom size");
+
+        Self {
+            rom,
+            sram: vec![0; sram_size].into(),
+            mbc,
+        }
     }
 
-    fn sram_size(&self) -> usize {
-        match self.sram_size {
-            0x00 => 0,
-            0x01 => 0x800,
-            0x02 => 0x2000,
-            0x03 => 0x8000,
-            0x04 => 0x20000,
-            0x05 => 0x10000,
-            _ => panic!("invalid sram size: 0x{:02X}", self.sram_size),
+    pub fn read(&self, addr: u16) -> u8 {
+        match addr {
+            0x0000..=0x7FFF => self.rom[self.mbc.get_addr(addr) & self.rom.len() - 1],
+            0xA000..=0xBFFF => match self.mbc {
+                Mbc::NoMbc => self.sram[addr as usize & (self.sram.len() - 1)],
+                Mbc::Mbc1 {
+                    ref sram_enable, ..
+                } => {
+                    if *sram_enable {
+                        self.sram[addr as usize & (self.sram.len() - 1)]
+                    } else {
+                        0xFF
+                    }
+                }
+            },
+            _ => panic!("invalid cartridge address: 0x{:04X}", addr),
+        }
+    }
+
+    pub fn write(&mut self, addr: u16, val: u8) {
+        match addr {
+            0x0000..=0x7FFF => self.mbc.write(addr, val),
+            0xA000..=0xBFFF => match self.mbc {
+                Mbc::NoMbc => self.sram[addr as usize & (self.sram.len() - 1)] = val,
+                Mbc::Mbc1 {
+                    ref sram_enable, ..
+                } => {
+                    if *sram_enable {
+                        self.sram[addr as usize & (self.sram.len() - 1)] = val
+                    }
+                }
+            },
+            _ => panic!("invalid cartridge address: 0x{:04X}", addr),
         }
     }
 }
