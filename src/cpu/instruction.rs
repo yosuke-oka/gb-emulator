@@ -368,6 +368,24 @@ impl Cpu {
         }
     }
 
+    // jump
+    pub fn jp(&mut self, bus: &mut Peripherals) {
+        static STEP: AtomicU8 = AtomicU8::new(0);
+        match STEP.load(Relaxed) {
+            0 => {
+                if let Some(val) = self.read16(bus, Imm16) {
+                    self.registers.pc = val;
+                    STEP.fetch_add(1, Relaxed);
+                }
+            }
+            1 => {
+                STEP.store(0, Relaxed);
+                self.fetch(bus);
+            }
+            _ => unreachable!(),
+        }
+    }
+
     // call subroutine
     pub fn call(&mut self, bus: &mut Peripherals) {
         static STEP: AtomicU8 = AtomicU8::new(0);

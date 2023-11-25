@@ -216,7 +216,7 @@ impl Cpu {
             //0xD2 => self.jp_c(bus, Cond::NC),
             0xE2 => self.ld(bus, Indirect::CFF, Reg8::A),
             0xF2 => self.ld(bus, Reg8::A, Indirect::CFF),
-            //0xC3 => self.jp(bus),
+            0xC3 => self.jp(bus),
             //0xD3 => self.undefined(bus),
             //0xE3 => self.undefined(bus),
             //0xF3 => self.di(bus),
