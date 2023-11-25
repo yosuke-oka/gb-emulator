@@ -1,4 +1,8 @@
-use std::{env, fs::File, io::Read};
+use std::{
+    env,
+    fs::File,
+    io::{BufReader, Read},
+};
 
 use gameboy::GameBoy;
 
@@ -24,14 +28,11 @@ fn file2vec(fname: &str) -> Vec<u8> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let bootrom_file = if args.len() < 2 {
-        "dmg_bootrom.bin"
-    } else {
-        &args[1]
+    if args.len() < 2 {
+        eprintln!("no cartridge\nUsage: {} <cartridge file>", args[0]);
     };
-    let rom = file2vec(bootrom_file);
-    //let mut reader = BufReader::with_capacity(8, file);
-    //let rom: Box<[u8]> = reader.fill_buf().unwrap().into();
+    let cartridge_file = &args[1];
+    let rom = file2vec("dmg_bootrom.bin");
     let bootrom = bootrom::BootRom::new(rom.into_boxed_slice());
     GameBoy::new(bootrom).run();
 }
