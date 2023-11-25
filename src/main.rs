@@ -1,8 +1,4 @@
-use std::{
-    env,
-    fs::File,
-    io::{BufReader, Read},
-};
+use std::{env, fs::File, io::Read};
 
 use gameboy::GameBoy;
 
