@@ -425,4 +425,35 @@ impl Cpu {
             _ => unreachable!(),
         }
     }
+
+    // return from interrupts
+    pub fn reti(&mut self, bus: &mut Peripherals) {
+        static STEP: AtomicU8 = AtomicU8::new(0);
+        match STEP.load(Relaxed) {
+            0 => {
+                if let Some(val) = self.pop16(bus) {
+                    self.registers.pc = val;
+                    STEP.fetch_add(1, Relaxed);
+                }
+            }
+            1 => {
+                self.interrupt.ime = true;
+                STEP.store(0, Relaxed);
+                self.fetch(bus);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // enable interrupts
+    pub fn ei(&mut self, bus: &Peripherals) {
+        self.fetch(bus);
+        self.interrupt.ime = true;
+    }
+
+    // disable interrupts
+    pub fn di(&mut self, bus: &Peripherals) {
+        self.fetch(bus);
+        self.interrupt.ime = false;
+    }
 }

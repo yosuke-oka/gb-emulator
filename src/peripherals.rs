@@ -1,5 +1,6 @@
 use crate::bootrom::BootRom;
 use crate::cartridge::{self, Cartridge};
+use crate::cpu::interrupts::Interrupts;
 use crate::hram::HRam;
 use crate::ppu::Ppu;
 use crate::wram::WRam;
@@ -43,7 +44,7 @@ impl Peripherals {
         }
     }
 
-    pub fn read(&self, addr: u16) -> u8 {
+    pub fn read(&self, interrupts: &Interrupts, addr: u16) -> u8 {
         match addr {
             BOOTROM_ADDR_START..=BOOTROM_ADDR_END => {
                 if self.bootrom.is_active() {
@@ -59,11 +60,12 @@ impl Peripherals {
             PPU_REGISTER_START..=PPU_REGISTER_END => self.ppu.read(addr),
             VRAM_ADDR_START..=VRAM_ADDR_END => self.ppu.read(addr),
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.read(addr),
+            0xFF0F | 0xFFFF => interrupts.read(addr),
             _ => 0xFF,
         }
     }
 
-    pub fn write(&mut self, addr: u16, val: u8) {
+    pub fn write(&mut self, interrupts: &mut Interrupts, addr: u16, val: u8) {
         match addr {
             BOOTROM_ADDR_START..=BOOTROM_ADDR_END => {
                 if !self.bootrom.is_active() {
@@ -78,6 +80,7 @@ impl Peripherals {
             PPU_REGISTER_START..=PPU_REGISTER_END => self.ppu.write(addr, val),
             VRAM_ADDR_START..=VRAM_ADDR_END => self.ppu.write(addr, val),
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.write(addr, val),
+            0xFF0F | 0xFFFF => interrupts.write(addr, val),
             _ => (),
         }
     }
