@@ -88,35 +88,15 @@ impl IO8<Reg8> for Cpu {
 
     fn write8(&mut self, _: &mut Peripherals, dst: Reg8, val: u8) -> Option<()> {
         match dst {
-            Reg8::A => {
-                self.registers.a = val;
-                Some(())
-            }
-            Reg8::B => {
-                self.registers.b = val;
-                Some(())
-            }
-            Reg8::C => {
-                self.registers.c = val;
-                Some(())
-            }
-            Reg8::D => {
-                self.registers.d = val;
-                Some(())
-            }
-            Reg8::E => {
-                self.registers.e = val;
-                Some(())
-            }
-            Reg8::H => {
-                self.registers.h = val;
-                Some(())
-            }
-            Reg8::L => {
-                self.registers.l = val;
-                Some(())
-            }
+            Reg8::A => self.registers.a = val,
+            Reg8::B => self.registers.b = val,
+            Reg8::C => self.registers.c = val,
+            Reg8::D => self.registers.d = val,
+            Reg8::E => self.registers.e = val,
+            Reg8::H => self.registers.h = val,
+            Reg8::L => self.registers.l = val,
         }
+        Some(())
     }
 }
 
@@ -133,27 +113,13 @@ impl IO16<Reg16> for Cpu {
 
     fn write16(&mut self, _: &mut Peripherals, dst: Reg16, val: u16) -> Option<()> {
         match dst {
-            Reg16::AF => {
-                self.registers.write_af(val);
-                Some(())
-            }
-            Reg16::BC => {
-                self.registers.write_bc(val);
-                Some(())
-            }
-            Reg16::DE => {
-                self.registers.write_de(val);
-                Some(())
-            }
-            Reg16::HL => {
-                self.registers.write_hl(val);
-                Some(())
-            }
-            Reg16::SP => {
-                self.registers.sp = val;
-                Some(())
-            }
+            Reg16::AF => self.registers.write_af(val),
+            Reg16::BC => self.registers.write_bc(val),
+            Reg16::DE => self.registers.write_de(val),
+            Reg16::HL => self.registers.write_hl(val),
+            Reg16::SP => self.registers.sp = val,
         }
+        Some(())
     }
 }
 
