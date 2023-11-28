@@ -269,14 +269,14 @@ impl Cpu {
             1 => {
                 let [lo, hi] = u16::to_le_bytes(val);
                 self.registers.sp = self.registers.sp.wrapping_sub(1);
-                bus.write(self.registers.sp, hi);
+                bus.write(&mut self.interrupts, self.registers.sp, hi);
                 VAL8.store(lo, Relaxed);
                 STEP.fetch_add(1, Relaxed);
                 None
             }
             2 => {
                 self.registers.sp = self.registers.sp.wrapping_sub(1);
-                bus.write(self.registers.sp, VAL8.load(Relaxed));
+                bus.write(&mut self.interrupts, self.registers.sp, VAL8.load(Relaxed));
                 STEP.fetch_add(1, Relaxed);
                 None
             }
@@ -302,13 +302,13 @@ impl Cpu {
         static VAL16: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
             0 => {
-                VAL8.store(bus.read(self.registers.sp), Relaxed);
+                VAL8.store(bus.read(&self.interrupts, self.registers.sp), Relaxed);
                 self.registers.sp = self.registers.sp.wrapping_add(1);
                 STEP.fetch_add(1, Relaxed);
                 None
             }
             1 => {
-                let hi = bus.read(self.registers.sp);
+                let hi = bus.read(&self.interrupts, self.registers.sp);
                 self.registers.sp = self.registers.sp.wrapping_add(1);
                 VAL16.store(u16::from_le_bytes([VAL8.load(Relaxed), hi]), Relaxed);
                 STEP.fetch_add(1, Relaxed);
@@ -437,7 +437,7 @@ impl Cpu {
                 }
             }
             1 => {
-                self.interrupt.ime = true;
+                self.interrupts.ime = true;
                 STEP.store(0, Relaxed);
                 self.fetch(bus);
             }
@@ -448,12 +448,12 @@ impl Cpu {
     // enable interrupts
     pub fn ei(&mut self, bus: &Peripherals) {
         self.fetch(bus);
-        self.interrupt.ime = true;
+        self.interrupts.ime = true;
     }
 
     // disable interrupts
     pub fn di(&mut self, bus: &Peripherals) {
         self.fetch(bus);
-        self.interrupt.ime = false;
+        self.interrupts.ime = false;
     }
 }

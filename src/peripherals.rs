@@ -1,6 +1,6 @@
 use crate::bootrom::BootRom;
-use crate::cartridge::{self, Cartridge};
-use crate::cpu::interrupts::Interrupts;
+use crate::cartridge::Cartridge;
+use crate::cpu::interrupt::Interrupts;
 use crate::hram::HRam;
 use crate::ppu::Ppu;
 use crate::wram::WRam;

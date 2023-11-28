@@ -7,7 +7,6 @@ mod cartridge;
 mod cpu;
 mod gameboy;
 mod hram;
-mod interrupt;
 mod lcd;
 mod peripherals;
 mod ppu;

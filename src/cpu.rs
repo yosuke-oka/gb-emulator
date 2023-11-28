@@ -1,7 +1,7 @@
 mod decode;
 mod fetch;
 mod instruction;
-mod interrupt;
+pub mod interrupt;
 mod operand;
 mod registers;
 

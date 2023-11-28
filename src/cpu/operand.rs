@@ -163,7 +163,7 @@ impl IO8<Imm8> for Cpu {
         static VAL8: AtomicU8 = AtomicU8::new(0);
         match STEP.load(Relaxed) {
             0 => {
-                VAL8.store(bus.read(self.registers.pc), Relaxed);
+                VAL8.store(bus.read(&self.interrupts, self.registers.pc), Relaxed);
                 self.registers.pc = self.registers.pc.wrapping_add(1);
                 STEP.fetch_add(1, Relaxed);
                 None
@@ -223,19 +223,21 @@ impl IO8<Indirect> for Cpu {
             0 => {
                 VAL8.store(
                     match src {
-                        Indirect::BC => bus.read(self.registers.bc()),
-                        Indirect::DE => bus.read(self.registers.de()),
-                        Indirect::HL => bus.read(self.registers.hl()),
-                        Indirect::CFF => bus.read(0xFF00 | u16::from(self.registers.c)),
+                        Indirect::BC => bus.read(&self.interrupts, self.registers.bc()),
+                        Indirect::DE => bus.read(&self.interrupts, self.registers.de()),
+                        Indirect::HL => bus.read(&self.interrupts, self.registers.hl()),
+                        Indirect::CFF => {
+                            bus.read(&self.interrupts, 0xFF00 | u16::from(self.registers.c))
+                        }
                         Indirect::HLD => {
                             let addr = self.registers.hl();
                             self.registers.write_hl(addr.wrapping_sub(1));
-                            bus.read(addr)
+                            bus.read(&self.interrupts, addr)
                         }
                         Indirect::HLI => {
                             let addr = self.registers.hl();
                             self.registers.write_hl(addr.wrapping_add(1));
-                            bus.read(addr)
+                            bus.read(&self.interrupts, addr)
                         }
                     },
                     Relaxed,
@@ -256,19 +258,23 @@ impl IO8<Indirect> for Cpu {
         match STEP.load(Relaxed) {
             0 => {
                 match dst {
-                    Indirect::BC => bus.write(self.registers.bc(), val),
-                    Indirect::DE => bus.write(self.registers.de(), val),
-                    Indirect::HL => bus.write(self.registers.hl(), val),
-                    Indirect::CFF => bus.write(0xFF00 | u16::from(self.registers.c), val),
+                    Indirect::BC => bus.write(&mut self.interrupts, self.registers.bc(), val),
+                    Indirect::DE => bus.write(&mut self.interrupts, self.registers.de(), val),
+                    Indirect::HL => bus.write(&mut self.interrupts, self.registers.hl(), val),
+                    Indirect::CFF => bus.write(
+                        &mut self.interrupts,
+                        0xFF00 | u16::from(self.registers.c),
+                        val,
+                    ),
                     Indirect::HLD => {
                         let addr = self.registers.hl();
                         self.registers.write_hl(addr.wrapping_sub(1));
-                        bus.write(addr, val)
+                        bus.write(&mut self.interrupts, addr, val)
                     }
                     Indirect::HLI => {
                         let addr = self.registers.hl();
                         self.registers.write_hl(addr.wrapping_add(1));
-                        bus.write(addr, val)
+                        bus.write(&mut self.interrupts, addr, val)
                     }
                 }
                 STEP.fetch_add(1, Relaxed);
@@ -310,7 +316,7 @@ impl IO8<Direct8> for Cpu {
                 None
             }
             2 => {
-                VAL8.store(bus.read(VAL16.load(Relaxed)), Relaxed);
+                VAL8.store(bus.read(&self.interrupts, VAL16.load(Relaxed)), Relaxed);
                 STEP.fetch_add(1, Relaxed);
                 None
             }
@@ -348,7 +354,7 @@ impl IO8<Direct8> for Cpu {
                 None
             }
             2 => {
-                bus.write(VAL16.load(Relaxed), val);
+                bus.write(&mut self.interrupts, VAL16.load(Relaxed), val);
                 STEP.fetch_add(1, Relaxed);
                 None
             }
@@ -386,12 +392,16 @@ impl IO16<Direct16> for Cpu {
                 None
             }
             2 => {
-                bus.write(VAL16.load(Relaxed), val as u8);
+                bus.write(&mut self.interrupts, VAL16.load(Relaxed), val as u8);
                 STEP.fetch_add(1, Relaxed);
                 None
             }
             3 => {
-                bus.write(VAL16.load(Relaxed).wrapping_add(1), (val >> 8) as u8);
+                bus.write(
+                    &mut self.interrupts,
+                    VAL16.load(Relaxed).wrapping_add(1),
+                    (val >> 8) as u8,
+                );
                 STEP.fetch_add(1, Relaxed);
                 None
             }
