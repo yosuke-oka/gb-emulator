@@ -535,10 +535,9 @@ impl Cpu {
     }
 
     pub fn cb_prefixed(&mut self, bus: &mut Peripherals) {
-        if let Some(v) = self.read8(bus, Imm8) {
-            self.ctx.opcode = v;
-            self.ctx.cb = true;
-            self.cb_decode(bus)
-        }
+        let v = self.read8(bus, Imm8);
+        self.ctx.opcode = v;
+        self.ctx.cb = true;
+        self.cb_decode(bus)
     }
 }

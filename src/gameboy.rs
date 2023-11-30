@@ -32,7 +32,7 @@ impl GameBoy {
         let mut elapsed = 0;
         'running: loop {
             let e = time.elapsed().as_nanos();
-            for _ in 0..((e - elapsed) / M_CYCLE_NANOS) {
+            for _ in 0..(e - elapsed) / M_CYCLE_NANOS {
                 for event in event_pump.poll_iter() {
                     match event {
                         Event::Quit { .. } => break 'running,
@@ -43,8 +43,8 @@ impl GameBoy {
                         _ => {}
                     }
                 }
-                self.cpu.emulate_cycle(&mut self.peripherals);
-                if self.peripherals.ppu.emulate_cycle() {
+                let elapsed_m_cycle = self.cpu.emulate_cycle(&mut self.peripherals);
+                if self.peripherals.ppu.emulate_cycle(elapsed_m_cycle) {
                     self.lcd.draw(&self.peripherals.ppu.pixel_buffer());
                 }
 

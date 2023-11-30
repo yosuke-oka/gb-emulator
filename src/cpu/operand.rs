@@ -1,15 +1,14 @@
 use crate::cpu::Cpu;
 use crate::peripherals::Peripherals;
-use std::sync::atomic::{AtomicU16, AtomicU8, Ordering::Relaxed};
 
 pub trait IO8<T: Copy> {
-    fn read8(&mut self, bus: &Peripherals, src: T) -> Option<u8>;
-    fn write8(&mut self, bus: &mut Peripherals, dst: T, val: u8) -> Option<()>;
+    fn read8(&mut self, bus: &Peripherals, src: T) -> u8;
+    fn write8(&mut self, bus: &mut Peripherals, dst: T, val: u8);
 }
 
 pub trait IO16<T: Copy> {
-    fn read16(&mut self, bus: &Peripherals, src: T) -> Option<u16>;
-    fn write16(&mut self, bus: &mut Peripherals, dst: T, val: u16) -> Option<()>;
+    fn read16(&mut self, bus: &Peripherals, src: T) -> u16;
+    fn write16(&mut self, bus: &mut Peripherals, dst: T, val: u16);
 }
 
 // 8-bit register
@@ -74,19 +73,19 @@ pub enum Cond {
 }
 
 impl IO8<Reg8> for Cpu {
-    fn read8(&mut self, _: &Peripherals, src: Reg8) -> Option<u8> {
+    fn read8(&mut self, _: &Peripherals, src: Reg8) -> u8 {
         match src {
-            Reg8::A => Some(self.registers.a),
-            Reg8::B => Some(self.registers.b),
-            Reg8::C => Some(self.registers.c),
-            Reg8::D => Some(self.registers.d),
-            Reg8::E => Some(self.registers.e),
-            Reg8::H => Some(self.registers.h),
-            Reg8::L => Some(self.registers.l),
+            Reg8::A => self.registers.a,
+            Reg8::B => self.registers.b,
+            Reg8::C => self.registers.c,
+            Reg8::D => self.registers.d,
+            Reg8::E => self.registers.e,
+            Reg8::H => self.registers.h,
+            Reg8::L => self.registers.l,
         }
     }
 
-    fn write8(&mut self, _: &mut Peripherals, dst: Reg8, val: u8) -> Option<()> {
+    fn write8(&mut self, _: &mut Peripherals, dst: Reg8, val: u8) {
         match dst {
             Reg8::A => self.registers.a = val,
             Reg8::B => self.registers.b = val,
@@ -96,22 +95,21 @@ impl IO8<Reg8> for Cpu {
             Reg8::H => self.registers.h = val,
             Reg8::L => self.registers.l = val,
         }
-        Some(())
     }
 }
 
 impl IO16<Reg16> for Cpu {
-    fn read16(&mut self, _: &Peripherals, src: Reg16) -> Option<u16> {
+    fn read16(&mut self, _: &Peripherals, src: Reg16) -> u16 {
         match src {
-            Reg16::AF => Some(self.registers.af()),
-            Reg16::BC => Some(self.registers.bc()),
-            Reg16::DE => Some(self.registers.de()),
-            Reg16::HL => Some(self.registers.hl()),
-            Reg16::SP => Some(self.registers.sp),
+            Reg16::AF => self.registers.af(),
+            Reg16::BC => self.registers.bc(),
+            Reg16::DE => self.registers.de(),
+            Reg16::HL => self.registers.hl(),
+            Reg16::SP => self.registers.sp,
         }
     }
 
-    fn write16(&mut self, _: &mut Peripherals, dst: Reg16, val: u16) -> Option<()> {
+    fn write16(&mut self, _: &mut Peripherals, dst: Reg16, val: u16) {
         match dst {
             Reg16::AF => self.registers.write_af(val),
             Reg16::BC => self.registers.write_bc(val),
@@ -119,263 +117,109 @@ impl IO16<Reg16> for Cpu {
             Reg16::HL => self.registers.write_hl(val),
             Reg16::SP => self.registers.sp = val,
         }
-        Some(())
     }
 }
 
 impl IO8<Imm8> for Cpu {
-    fn read8(&mut self, bus: &Peripherals, _: Imm8) -> Option<u8> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                VAL8.store(bus.read(&self.interrupts, self.registers.pc), Relaxed);
-                self.registers.pc = self.registers.pc.wrapping_add(1);
-                STEP.fetch_add(1, Relaxed);
-                None
-            }
-            1 => {
-                STEP.store(0, Relaxed);
-                Some(VAL8.load(Relaxed))
-            }
-            _ => unreachable!(),
-        }
+    fn read8(&mut self, bus: &Peripherals, _: Imm8) -> u8 {
+        let val = self.read_bus(bus, self.registers.pc);
+        self.registers.pc = self.registers.pc.wrapping_add(1);
+        return val;
     }
 
-    fn write8(&mut self, _: &mut Peripherals, _: Imm8, _: u8) -> Option<()> {
+    fn write8(&mut self, _: &mut Peripherals, _: Imm8, _: u8) {
         unreachable!()
     }
 }
 
 // 2 M-cycle
 impl IO16<Imm16> for Cpu {
-    fn read16(&mut self, bus: &Peripherals, _: Imm16) -> Option<u16> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                if let Some(lo) = self.read8(bus, Imm8) {
-                    VAL8.store(lo, Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-                }
-                None
-            }
-            1 => {
-                if let Some(hi) = self.read8(bus, Imm8) {
-                    VAL16.store(u16::from_le_bytes([VAL8.load(Relaxed), hi]), Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-                }
-                None
-            }
-            2 => {
-                STEP.store(0, Relaxed);
-                Some(VAL16.load(Relaxed))
-            }
-            _ => unreachable!(),
-        }
+    fn read16(&mut self, bus: &Peripherals, _: Imm16) -> u16 {
+        let lo = self.read8(bus, Imm8);
+        let hi = self.read8(bus, Imm8);
+        u16::from_le_bytes([lo, hi])
     }
 
-    fn write16(&mut self, _: &mut Peripherals, _: Imm16, _: u16) -> Option<()> {
+    fn write16(&mut self, _: &mut Peripherals, _: Imm16, _: u16) {
         unreachable!()
     }
 }
 
 impl IO8<Indirect> for Cpu {
-    fn read8(&mut self, bus: &Peripherals, src: Indirect) -> Option<u8> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                VAL8.store(
-                    match src {
-                        Indirect::BC => bus.read(&self.interrupts, self.registers.bc()),
-                        Indirect::DE => bus.read(&self.interrupts, self.registers.de()),
-                        Indirect::HL => bus.read(&self.interrupts, self.registers.hl()),
-                        Indirect::CFF => {
-                            bus.read(&self.interrupts, 0xFF00 | u16::from(self.registers.c))
-                        }
-                        Indirect::HLD => {
-                            let addr = self.registers.hl();
-                            self.registers.write_hl(addr.wrapping_sub(1));
-                            bus.read(&self.interrupts, addr)
-                        }
-                        Indirect::HLI => {
-                            let addr = self.registers.hl();
-                            self.registers.write_hl(addr.wrapping_add(1));
-                            bus.read(&self.interrupts, addr)
-                        }
-                    },
-                    Relaxed,
-                );
-                STEP.fetch_add(1, Relaxed);
-                None
+    fn read8(&mut self, bus: &Peripherals, src: Indirect) -> u8 {
+        match src {
+            Indirect::BC => self.read_bus(bus, self.registers.bc()),
+            Indirect::DE => self.read_bus(bus, self.registers.de()),
+            Indirect::HL => self.read_bus(bus, self.registers.hl()),
+            Indirect::CFF => self.read_bus(bus, 0xFF00 | u16::from(self.registers.c)),
+            Indirect::HLD => {
+                let addr = self.registers.hl();
+                self.registers.write_hl(addr.wrapping_sub(1));
+                self.read_bus(bus, addr)
             }
-            1 => {
-                STEP.store(0, Relaxed);
-                Some(VAL8.load(Relaxed))
+            Indirect::HLI => {
+                let addr = self.registers.hl();
+                self.registers.write_hl(addr.wrapping_add(1));
+                self.read_bus(bus, addr)
             }
-            _ => unreachable!(),
         }
     }
 
-    fn write8(&mut self, bus: &mut Peripherals, dst: Indirect, val: u8) -> Option<()> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                match dst {
-                    Indirect::BC => bus.write(&mut self.interrupts, self.registers.bc(), val),
-                    Indirect::DE => bus.write(&mut self.interrupts, self.registers.de(), val),
-                    Indirect::HL => bus.write(&mut self.interrupts, self.registers.hl(), val),
-                    Indirect::CFF => bus.write(
-                        &mut self.interrupts,
-                        0xFF00 | u16::from(self.registers.c),
-                        val,
-                    ),
-                    Indirect::HLD => {
-                        let addr = self.registers.hl();
-                        self.registers.write_hl(addr.wrapping_sub(1));
-                        bus.write(&mut self.interrupts, addr, val)
-                    }
-                    Indirect::HLI => {
-                        let addr = self.registers.hl();
-                        self.registers.write_hl(addr.wrapping_add(1));
-                        bus.write(&mut self.interrupts, addr, val)
-                    }
-                }
-                STEP.fetch_add(1, Relaxed);
-                None
+    fn write8(&mut self, bus: &mut Peripherals, dst: Indirect, val: u8) {
+        match dst {
+            Indirect::BC => self.write_bus(bus, self.registers.bc(), val),
+            Indirect::DE => self.write_bus(bus, self.registers.de(), val),
+            Indirect::HL => self.write_bus(bus, self.registers.hl(), val),
+            Indirect::CFF => self.write_bus(bus, 0xFF00 | u16::from(self.registers.c), val),
+            Indirect::HLD => {
+                let addr = self.registers.hl();
+                self.registers.write_hl(addr.wrapping_sub(1));
+                self.write_bus(bus, addr, val)
             }
-            1 => {
-                STEP.store(0, Relaxed);
-                Some(())
+            Indirect::HLI => {
+                let addr = self.registers.hl();
+                self.registers.write_hl(addr.wrapping_add(1));
+                self.write_bus(bus, addr, val)
             }
-            _ => unreachable!(),
         }
     }
 }
 
 impl IO8<Direct8> for Cpu {
-    fn read8(&mut self, bus: &Peripherals, src: Direct8) -> Option<u8> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                if let Some(lo) = self.read8(bus, Imm8) {
-                    VAL8.store(lo, Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-
-                    // for DFF, write 0xFF00 + lo, and read in 2 M-cycle
-                    if let Direct8::DFF = src {
-                        VAL16.store(0xFF00 | u16::from(lo), Relaxed);
-                        STEP.fetch_add(1, Relaxed);
-                    }
-                }
-                None
-            }
-            1 => {
-                if let Some(hi) = self.read8(bus, Imm8) {
-                    VAL16.store(u16::from_le_bytes([VAL8.load(Relaxed), hi]), Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-                }
-                None
-            }
-            2 => {
-                VAL8.store(bus.read(&self.interrupts, VAL16.load(Relaxed)), Relaxed);
-                STEP.fetch_add(1, Relaxed);
-                None
-            }
-            3 => {
-                STEP.store(0, Relaxed);
-                Some(VAL8.load(Relaxed))
-            }
-            _ => unreachable!(),
-        }
+    fn read8(&mut self, bus: &Peripherals, src: Direct8) -> u8 {
+        let lo = self.read8(bus, Imm8);
+        let hi = if let Direct8::DFF = src {
+            0xFF
+        } else {
+            self.read8(bus, Imm8)
+        };
+        self.read_bus(bus, u16::from_le_bytes([lo, hi]))
     }
 
-    fn write8(&mut self, bus: &mut Peripherals, dst: Direct8, val: u8) -> Option<()> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                if let Some(lo) = self.read8(bus, Imm8) {
-                    VAL8.store(lo, Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-
-                    // for DFF, write 0xFF00 + lo, and write in 2 M-cycle
-                    if let Direct8::DFF = dst {
-                        VAL16.store(0xFF00 | u16::from(lo), Relaxed);
-                        STEP.fetch_add(1, Relaxed);
-                    }
-                }
-                None
-            }
-            1 => {
-                if let Some(hi) = self.read8(bus, Imm8) {
-                    VAL16.store(u16::from_le_bytes([VAL8.load(Relaxed), hi]), Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-                }
-                None
-            }
-            2 => {
-                bus.write(&mut self.interrupts, VAL16.load(Relaxed), val);
-                STEP.fetch_add(1, Relaxed);
-                None
-            }
-            3 => {
-                STEP.store(0, Relaxed);
-                Some(())
-            }
-            _ => unreachable!(),
-        }
+    fn write8(&mut self, bus: &mut Peripherals, dst: Direct8, val: u8) {
+        let lo = self.read8(bus, Imm8);
+        let hi = if let Direct8::DFF = dst {
+            0xFF
+        } else {
+            self.read8(bus, Imm8)
+        };
+        self.write_bus(bus, u16::from_le_bytes([lo, hi]), val);
     }
 }
 
 impl IO16<Direct16> for Cpu {
-    fn read16(&mut self, _: &Peripherals, _: Direct16) -> Option<u16> {
+    fn read16(&mut self, _: &Peripherals, _: Direct16) -> u16 {
         unreachable!()
     }
 
-    fn write16(&mut self, bus: &mut Peripherals, _: Direct16, val: u16) -> Option<()> {
-        static STEP: AtomicU8 = AtomicU8::new(0);
-        static VAL8: AtomicU8 = AtomicU8::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
-        match STEP.load(Relaxed) {
-            0 => {
-                if let Some(lo) = self.read8(bus, Imm8) {
-                    VAL8.store(lo, Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-                }
-                None
-            }
-            1 => {
-                if let Some(hi) = self.read8(bus, Imm8) {
-                    VAL16.store(u16::from_le_bytes([VAL8.load(Relaxed), hi]), Relaxed);
-                    STEP.fetch_add(1, Relaxed);
-                }
-                None
-            }
-            2 => {
-                bus.write(&mut self.interrupts, VAL16.load(Relaxed), val as u8);
-                STEP.fetch_add(1, Relaxed);
-                None
-            }
-            3 => {
-                bus.write(
-                    &mut self.interrupts,
-                    VAL16.load(Relaxed).wrapping_add(1),
-                    (val >> 8) as u8,
-                );
-                STEP.fetch_add(1, Relaxed);
-                None
-            }
-            4 => {
-                STEP.store(0, Relaxed);
-                Some(())
-            }
-            _ => unreachable!(),
-        }
+    fn write16(&mut self, bus: &mut Peripherals, _: Direct16, val: u16) {
+        let lo = self.read8(bus, Imm8);
+        let hi = self.read8(bus, Imm8);
+        self.write_bus(bus, u16::from_le_bytes([lo, hi]), val as u8);
+        self.write_bus(
+            bus,
+            u16::from_le_bytes([lo, hi]).wrapping_add(1),
+            (val >> 8) as u8,
+        );
     }
 }
