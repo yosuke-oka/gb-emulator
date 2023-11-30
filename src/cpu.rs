@@ -20,6 +20,7 @@ struct Ctx {
 pub struct Cpu {
     registers: Registers,
     interrupts: Interrupts,
+    halting: bool,
     ctx: Ctx,
 }
 
@@ -28,6 +29,7 @@ impl Cpu {
         Self {
             registers: Registers::default(),
             interrupts: Interrupts::default(),
+            halting: false,
             ctx: Ctx::default(),
         }
     }
@@ -40,7 +42,9 @@ impl Cpu {
         }
 
         // fetch / execute overlap
-        self.fetch(bus);
+        if !self.halting {
+            self.fetch(bus);
+        }
 
         return self.ctx.elapsed_cycle;
     }

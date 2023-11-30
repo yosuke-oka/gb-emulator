@@ -6,8 +6,16 @@ use std::sync::atomic::{AtomicU16, AtomicU8, Ordering::Relaxed};
 use super::operand::{Cond, Reg16, IO16, IO8};
 
 impl Cpu {
-    pub fn nop(&mut self, bus: &Peripherals) {
+    pub fn nop(&mut self, _: &Peripherals) {
         // nop
+    }
+
+    pub fn halt(&mut self, _: &Peripherals) {
+        if self.interrupts.get_interrupt() == 0 {
+            self.halting = true;
+        } else {
+            self.halting = false;
+        }
     }
 
     // load dst <- src
