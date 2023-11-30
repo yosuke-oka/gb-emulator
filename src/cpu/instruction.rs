@@ -119,12 +119,13 @@ impl Cpu {
     {
         let val = self.read8(bus, src);
         let c = self.registers.cf() as u8;
-        let (result, carry) = self.registers.a.overflowing_add(val + c);
+        let result = self.registers.a.wrapping_add(val).wrapping_add(c);
         self.registers.set_zf(result == 0);
         self.registers.set_nf(false);
         self.registers
             .set_hf((self.registers.a & 0xf) + (val & 0xf) + c > 0xf);
-        self.registers.set_cf(carry);
+        self.registers
+            .set_cf(self.registers.a as u16 + val as u16 + c as u16 > 0xff);
         self.registers.a = result;
     }
 
@@ -150,12 +151,13 @@ impl Cpu {
     {
         let val = self.read8(bus, src);
         let c = self.registers.cf() as u8;
-        let (result, carry) = self.registers.a.overflowing_sub(val + c);
+        let result = self.registers.a.wrapping_sub(val).wrapping_sub(c);
         self.registers.set_zf(result == 0);
         self.registers.set_nf(true);
         self.registers
             .set_hf((self.registers.a & 0xf) < (val & 0xf) + c);
-        self.registers.set_cf(carry);
+        self.registers
+            .set_cf((self.registers.a as u16) < (val as u16) + (c as u16));
         self.registers.a = result;
     }
 
@@ -625,6 +627,6 @@ impl Cpu {
     }
 
     pub fn undefined(&mut self, _: &mut Peripherals) {
-        panic!("undefined instruction");
+        panic!("undefined instruction {:2X}", self.ctx.opcode);
     }
 }
