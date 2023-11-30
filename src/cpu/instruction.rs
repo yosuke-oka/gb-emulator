@@ -49,6 +49,110 @@ impl Cpu {
         self.registers.set_cf(carry);
     }
 
+    // add src to A register
+    pub fn add<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let (result, carry) = self.registers.a.overflowing_add(val);
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(false);
+        self.registers
+            .set_hf((self.registers.a & 0xf) + (val & 0xf) > 0xf);
+        self.registers.set_cf(carry);
+        self.registers.a = result;
+    }
+
+    // add src + carry to A register
+    pub fn adc<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let c = self.registers.cf() as u8;
+        let (result, carry) = self.registers.a.overflowing_add(val + c);
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(false);
+        self.registers
+            .set_hf((self.registers.a & 0xf) + (val & 0xf) + c > 0xf);
+        self.registers.set_cf(carry);
+        self.registers.a = result;
+    }
+
+    // subtract src from A register
+    pub fn sub<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let (result, carry) = self.registers.a.overflowing_sub(val);
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(true);
+        self.registers
+            .set_hf((self.registers.a & 0xf) < (val & 0xf));
+        self.registers.set_cf(carry);
+        self.registers.a = result;
+    }
+
+    // subtract src + carry from A register
+    pub fn sbc<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let c = self.registers.cf() as u8;
+        let (result, carry) = self.registers.a.overflowing_sub(val + c);
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(true);
+        self.registers
+            .set_hf((self.registers.a & 0xf) < (val & 0xf) + c);
+        self.registers.set_cf(carry);
+        self.registers.a = result;
+    }
+
+    // logical and src with A register
+    pub fn and<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let result = self.registers.a & val;
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(false);
+        self.registers.set_hf(true);
+        self.registers.set_cf(false);
+        self.registers.a = result;
+    }
+
+    // logical or src with A register
+    pub fn or<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let result = self.registers.a | val;
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(false);
+        self.registers.set_hf(false);
+        self.registers.set_cf(false);
+        self.registers.a = result;
+    }
+
+    // logical xor src with A register
+    pub fn xor<S: Copy>(&mut self, bus: &Peripherals, src: S)
+    where
+        Self: IO8<S>,
+    {
+        let val = self.read8(bus, src);
+        let result = self.registers.a ^ val;
+        self.registers.set_zf(result == 0);
+        self.registers.set_nf(false);
+        self.registers.set_hf(false);
+        self.registers.set_cf(false);
+        self.registers.a = result;
+    }
+
     // increment src
     pub fn inc<S: Copy>(&mut self, bus: &mut Peripherals, src: S)
     where
