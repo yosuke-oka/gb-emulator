@@ -62,7 +62,7 @@ pub struct Ppu {
     vram: Box<[u8; 0x2000]>, // 8 KiB video ram
     oam: Box<[u8; 0xA0]>,    // 160 B object attribute memory
     buffer: Box<[u8; LCD_PIXELS * 4]>,
-    cycles: u8,
+    cycles: i8,
 }
 
 impl Ppu {
@@ -203,12 +203,13 @@ impl Ppu {
 
     // drawing (mode: 3) のときは OAM と VRAM にアクセスできないので、
     // M-cycle ごとの厳密な実装ではなく、 drawing の際にレンダリングすることで実装を簡略化している
-    pub fn emulate_cycle(&mut self) -> bool {
+    pub fn emulate_cycle(&mut self, elapsed_cycle: u8) -> bool {
         if self.lcdc & PPU_ENABLE == 0 {
             return false;
         }
 
-        self.cycles -= 1;
+        //self.cycles -= 1;
+        self.cycles -= elapsed_cycle as i8;
         if self.cycles > 0 {
             return false;
         }
@@ -220,10 +221,10 @@ impl Ppu {
                 self.ly += 1;
                 if self.ly < 144 {
                     self.mode = Mode::OAMScan;
-                    self.cycles = 20;
+                    self.cycles += 20;
                 } else {
                     self.mode = Mode::VBlank;
-                    self.cycles = 114
+                    self.cycles += 114
                 }
                 self.check_lyc_eq_ly();
             }
@@ -232,21 +233,21 @@ impl Ppu {
                 if self.ly > 153 {
                     self.ly = 0;
                     self.mode = Mode::OAMScan;
-                    self.cycles = 20;
+                    self.cycles += 20;
                     need_vsync = true;
                 } else {
-                    self.cycles = 114;
+                    self.cycles += 114;
                 }
                 self.check_lyc_eq_ly();
             }
             Mode::OAMScan => {
                 self.mode = Mode::Drawing;
-                self.cycles = 43;
+                self.cycles += 43;
             }
             Mode::Drawing => {
                 self.render_bg();
                 self.mode = Mode::HBlank;
-                self.cycles = 51;
+                self.cycles += 51;
             }
         }
         need_vsync

@@ -14,7 +14,7 @@ struct Ctx {
     opcode: u8,
     cb: bool,
     interrupt: bool,
-    elapsed_cycle: usize,
+    elapsed_cycle: u8,
 }
 
 pub struct Cpu {
@@ -31,7 +31,7 @@ impl Cpu {
             ctx: Ctx::default(),
         }
     }
-    pub fn emulate_cycle(&mut self, bus: &mut Peripherals) -> usize {
+    pub fn emulate_cycle(&mut self, bus: &mut Peripherals) -> u8 {
         self.ctx.elapsed_cycle = 1;
         if self.ctx.interrupt {
             self.call_isr(bus);
