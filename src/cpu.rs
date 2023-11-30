@@ -5,7 +5,7 @@ pub mod interrupt;
 mod operand;
 mod registers;
 
-use self::interrupt::Interrupts;
+use self::interrupt::{Interrupts, JOYPAD, LCD_STAT, SERIAL, TIMER, VBLANK};
 use self::registers::Registers;
 use crate::peripherals::Peripherals;
 
@@ -46,7 +46,20 @@ impl Cpu {
     }
 
     fn call_isr(&mut self, bus: &mut Peripherals) {
-        //todo
+        self.push16(bus, self.registers.pc);
+        let highest_interrupt = 1 << self.interrupts.get_interrupt().trailing_zeros();
+        self.interrupts.interrupt_flags &= !highest_interrupt;
+        // cal isr
+        self.registers.pc = match highest_interrupt {
+            VBLANK => 0x0040,
+            LCD_STAT => 0x0048,
+            TIMER => 0x0050,
+            SERIAL => 0x0058,
+            JOYPAD => 0x0060,
+            _ => panic!("invalid interrupt: {:02X}", highest_interrupt),
+        };
+
+        self.ctx.interrupt = false;
     }
 
     fn tick(&mut self) {
