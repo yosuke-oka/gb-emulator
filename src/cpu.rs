@@ -21,6 +21,7 @@ pub struct Cpu {
     registers: Registers,
     pub interrupts: Interrupts,
     halting: bool,
+    ei_delay: bool,
     ctx: Ctx,
 }
 
@@ -30,6 +31,7 @@ impl Cpu {
             registers: Registers::default(),
             interrupts: Interrupts::default(),
             halting: false,
+            ei_delay: false,
             ctx: Ctx::default(),
         }
     }
@@ -46,6 +48,12 @@ impl Cpu {
             self.fetch(bus);
         }
 
+        // ei は fetch のあとに割り込みフラグをtrueにする
+        if self.ei_delay {
+            self.interrupts.ime = true;
+            self.ei_delay = false;
+        }
+        //println!(" elapsed_cycle: {}", self.ctx.elapsed_cycle);
         return self.ctx.elapsed_cycle;
     }
 

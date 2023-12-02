@@ -11,6 +11,7 @@ impl Cpu {
             self.cb_decode(bus);
             return;
         }
+        //print!("opecode: {:02x}", self.ctx.opcode);
         match self.ctx.opcode {
             0x00 => self.nop(bus),
             0x10 => self.stop(bus),
@@ -272,6 +273,7 @@ impl Cpu {
     }
 
     pub fn cb_decode(&mut self, bus: &mut Peripherals) {
+        //print!(" opecode: {:02x} cb: t", self.ctx.opcode);
         match self.ctx.opcode {
             0x00 => self.rlc(bus, Reg8::B),
             0x10 => self.rl(bus, Reg8::B),
@@ -535,7 +537,7 @@ impl Cpu {
     pub fn cb_prefixed(&mut self, bus: &mut Peripherals) {
         let v = self.read8(bus, Imm8);
         // TODO: need tick here ?
-        // self.tick();
+        //self.tick();
         self.ctx.opcode = v;
         self.ctx.cb = true;
         self.cb_decode(bus)

@@ -615,14 +615,12 @@ impl Cpu {
     }
 
     // enable interrupts
-    pub fn ei(&mut self, bus: &Peripherals) {
-        self.fetch(bus);
-        self.interrupts.ime = true;
+    pub fn ei(&mut self, _: &Peripherals) {
+        self.ei_delay = true;
     }
 
     // disable interrupts
-    pub fn di(&mut self, bus: &Peripherals) {
-        self.fetch(bus);
+    pub fn di(&mut self, _: &Peripherals) {
         self.interrupts.ime = false;
     }
 
