@@ -1,5 +1,10 @@
 use std::iter;
 
+use crate::{
+    cpu::interrupt::{self, Interrupts},
+    peripherals::Peripherals,
+};
+
 pub const LCD_WIDTH: usize = 160;
 pub const LCD_HEIGHT: usize = 144;
 pub const LCD_PIXELS: usize = LCD_WIDTH * LCD_HEIGHT;
@@ -10,6 +15,7 @@ const SCY_ADDR: u16 = 0xFF42;
 const SCX_ADDR: u16 = 0xFF43;
 const LY_ADDR: u16 = 0xFF44;
 const LYC_ADDR: u16 = 0xFF45;
+const DMA_ADDR: u16 = 0xFF46;
 const BGP_ADDR: u16 = 0xFF47;
 const OBP0_ADDR: u16 = 0xFF48;
 const OBP1_ADDR: u16 = 0xFF49;
@@ -61,8 +67,9 @@ pub struct Ppu {
     wx: u8,                  // window x
     vram: Box<[u8; 0x2000]>, // 8 KiB video ram
     oam: Box<[u8; 0xA0]>,    // 160 B object attribute memory
+    pub oam_dma: Option<u16>,
     buffer: Box<[u8; LCD_PIXELS * 4]>,
-    cycles: i8,
+    cycles: i16,
 }
 
 impl Ppu {
@@ -82,6 +89,7 @@ impl Ppu {
             wx: 0,
             vram: Box::new([0; 0x2000]),
             oam: Box::new([0; 0xA0]),
+            oam_dma: None,
             buffer: Box::new([0; LCD_PIXELS * 4]),
             cycles: 20, // OAM scan mode needs 20 cycles
         }
@@ -95,6 +103,13 @@ impl Ppu {
             SCX_ADDR => self.scx,
             LY_ADDR => self.ly,
             LYC_ADDR => self.lyc,
+            DMA_ADDR => {
+                if self.oam_dma.is_some() {
+                    0xFF
+                } else {
+                    self.oam[addr as usize & 0xFF]
+                }
+            }
             BGP_ADDR => self.bgp,
             OBP0_ADDR => self.obp0,
             OBP1_ADDR => self.obp1,
@@ -126,6 +141,9 @@ impl Ppu {
             SCX_ADDR => self.scx = val,
             LY_ADDR => self.ly = 0,
             LYC_ADDR => self.lyc = val,
+            DMA_ADDR => {
+                self.oam_dma = Some((val as u16) << 8);
+            }
             BGP_ADDR => self.bgp = val,
             OBP0_ADDR => self.obp0 = val,
             OBP1_ADDR => self.obp1 = val,
@@ -140,7 +158,9 @@ impl Ppu {
             OAM_ADDR_START..=OAM_ADDR_END => {
                 if self.mode != Mode::OAMScan && self.mode != Mode::Drawing {
                     // can not write oam during oam scan or drawing
-                    self.oam[(addr - OAM_ADDR_START) as usize] = val;
+                    if self.oam_dma.is_none() {
+                        self.oam[(addr - OAM_ADDR_START) as usize] = val;
+                    }
                 }
             }
             _ => panic!("invalid ppu address: 0x{:04X}", addr),
@@ -209,7 +229,7 @@ impl Ppu {
         }
 
         //self.cycles -= 1;
-        self.cycles -= elapsed_cycle as i8;
+        self.cycles -= elapsed_cycle as i16;
         if self.cycles > 0 {
             return false;
         }
@@ -251,6 +271,18 @@ impl Ppu {
             }
         }
         need_vsync
+    }
+
+    pub fn write_oam(&mut self, addr: u16, val: u8) {
+        if self.mode != Mode::OAMScan && self.mode != Mode::Drawing {
+            // can not write oam during oam scan or drawing
+            self.oam[addr as usize & 0xFF] = val;
+        }
+    }
+
+    pub fn finish_oam_dma(&mut self) {
+        self.oam_dma = None;
+        self.cycles = 160;
     }
 
     // For LCD

@@ -19,7 +19,7 @@ struct Ctx {
 
 pub struct Cpu {
     registers: Registers,
-    interrupts: Interrupts,
+    pub interrupts: Interrupts,
     halting: bool,
     ctx: Ctx,
 }

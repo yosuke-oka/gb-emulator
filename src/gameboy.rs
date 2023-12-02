@@ -44,6 +44,14 @@ impl GameBoy {
                     }
                 }
                 let elapsed_m_cycle = self.cpu.emulate_cycle(&mut self.peripherals);
+                if let Some(addr) = self.peripherals.ppu.oam_dma {
+                    // TODO: 実装があっているか不明かつ、ppuに処理を移動したい
+                    for i in 0..0xA0 {
+                        let data = self.peripherals.read(&self.cpu.interrupts, addr + i);
+                        self.peripherals.ppu.write_oam(0xFE00 + i, data);
+                    }
+                    self.peripherals.ppu.finish_oam_dma();
+                }
                 if self.peripherals.ppu.emulate_cycle(elapsed_m_cycle) {
                     self.lcd.draw(&self.peripherals.ppu.pixel_buffer());
                 }
