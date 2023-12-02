@@ -10,6 +10,7 @@ mod hram;
 mod lcd;
 mod peripherals;
 mod ppu;
+mod timer;
 mod wram;
 
 fn file2vec(fname: &str) -> Vec<u8> {
