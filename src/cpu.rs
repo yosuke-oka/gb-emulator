@@ -79,12 +79,13 @@ impl Cpu {
     }
 
     fn read_bus(&mut self, bus: &Peripherals, addr: u16) -> u8 {
+        let val = bus.read(&self.interrupts, addr);
         self.tick();
-        bus.read(&self.interrupts, addr)
+        val
     }
 
     fn write_bus(&mut self, bus: &mut Peripherals, addr: u16, val: u8) {
+        bus.write(&mut self.interrupts, addr, val);
         self.tick();
-        bus.write(&mut self.interrupts, addr, val)
     }
 }

@@ -3,7 +3,7 @@ use crate::peripherals::Peripherals;
 
 impl Cpu {
     pub fn fetch(&mut self, bus: &Peripherals) {
-        self.ctx.opcode = bus.read(&self.interrupts, self.registers.pc);
+        self.ctx.opcode = self.read_bus(bus, self.registers.pc);
         if self.interrupts.ime && self.interrupts.get_interrupt() != 0 {
             self.ctx.interrupt = true;
         } else {
