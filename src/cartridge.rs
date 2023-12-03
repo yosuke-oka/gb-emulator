@@ -63,7 +63,7 @@ impl Cartridge {
                     ref sram_enable, ..
                 } => {
                     if *sram_enable {
-                        self.sram[addr as usize & (self.sram.len() - 1)] = val
+                        self.sram[self.mbc.get_addr(addr) & (self.sram.len() - 1)] = val
                     }
                 }
             },

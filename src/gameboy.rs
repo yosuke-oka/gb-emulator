@@ -42,14 +42,6 @@ impl GameBoy {
                     }
                 }
                 self.cpu.emulate_cycle(&mut self.bus);
-                if let Some(addr) = self.bus.ppu.oam_dma {
-                    // TODO: 実装があっているか不明かつ、ppuに処理を移動したい
-                    for i in 0..0xA0 {
-                        let data = self.bus.read(&self.cpu.interrupts, addr + i);
-                        self.bus.ppu.write_oam(0xFE00 + i, data);
-                    }
-                    self.bus.ppu.finish_oam_dma();
-                }
 
                 elapsed += M_CYCLE_NANOS;
             }

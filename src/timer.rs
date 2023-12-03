@@ -29,7 +29,7 @@ impl Timer {
             self.tima = self.tma;
             self.overflow = false;
             interrupts.irq(TIMER);
-        } else if self.tac & 0b100 != 0 && self.div & (modulo - 1) == 0 {
+        } else if self.div & (modulo - 1) == 0 {
             let (tima, overflow) = self.tima.overflowing_add(1);
             self.tima = tima;
             self.overflow = overflow;
