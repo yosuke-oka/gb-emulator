@@ -11,7 +11,6 @@ const M_CYCLE_NANOS: u128 = M_CYCLE_CLOCK * 1_000_000_000 / CPU_CLOCK_HZ;
 pub struct GameBoy {
     cpu: Cpu,
     bus: Bus,
-    lcd: LCD,
     sdl: Sdl,
 }
 
@@ -20,8 +19,7 @@ impl GameBoy {
         let sdl = sdl2::init().expect("failed to initialize SDL");
         Self {
             cpu: Cpu::new(),
-            bus: Bus::new(bootrom, cartridge),
-            lcd: LCD::new(&sdl, 4),
+            bus: Bus::new(bootrom, cartridge, LCD::new(&sdl, 4)),
             sdl,
         }
     }
@@ -54,9 +52,6 @@ impl GameBoy {
                         self.bus.ppu.write_oam(0xFE00 + i, data);
                     }
                     self.bus.ppu.finish_oam_dma();
-                }
-                if self.bus.ppu.emulate_cycle(elapsed_m_cycle) {
-                    self.lcd.draw(&self.bus.ppu.pixel_buffer());
                 }
 
                 elapsed += M_CYCLE_NANOS;

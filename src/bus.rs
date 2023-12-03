@@ -2,6 +2,7 @@ use crate::bootrom::BootRom;
 use crate::cartridge::Cartridge;
 use crate::cpu::interrupt::Interrupts;
 use crate::hram::HRam;
+use crate::lcd::LCD;
 use crate::ppu::Ppu;
 use crate::timer::Timer;
 use crate::wram::WRam;
@@ -38,12 +39,12 @@ pub struct Bus {
 }
 
 impl Bus {
-    pub fn new(bootrom: BootRom, cartridge: Cartridge) -> Self {
+    pub fn new(bootrom: BootRom, cartridge: Cartridge, lcd: LCD) -> Self {
         Self {
             bootrom,
             wram: WRam::new(),
             hram: HRam::new(),
-            ppu: Ppu::new(),
+            ppu: Ppu::new(lcd),
             timer: Timer::default(),
             cartridge,
         }
@@ -89,6 +90,12 @@ impl Bus {
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.write(addr, val),
             0xFF0F | 0xFFFF => interrupts.write(addr, val),
             _ => (),
+        }
+    }
+
+    pub fn tick(&mut self) {
+        if self.ppu.emulate_cycle() {
+            self.ppu.draw();
         }
     }
 }

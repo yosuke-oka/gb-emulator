@@ -1,5 +1,7 @@
 use std::iter;
 
+use crate::lcd::LCD;
+
 pub const LCD_WIDTH: usize = 160;
 pub const LCD_HEIGHT: usize = 144;
 pub const LCD_PIXELS: usize = LCD_WIDTH * LCD_HEIGHT;
@@ -64,11 +66,12 @@ pub struct Ppu {
     oam: Box<[u8; 0xA0]>,    // 160 B object attribute memory
     pub oam_dma: Option<u16>,
     buffer: Box<[u8; LCD_PIXELS * 4]>,
-    cycles: i16,
+    cycles: u16,
+    lcd: LCD, // TODO: 一般化
 }
 
 impl Ppu {
-    pub fn new() -> Self {
+    pub fn new(lcd: LCD) -> Self {
         Self {
             mode: Mode::OAMScan,
             lcdc: 0,
@@ -87,6 +90,7 @@ impl Ppu {
             oam_dma: None,
             buffer: Box::new([0; LCD_PIXELS * 4]),
             cycles: 20, // OAM scan mode needs 20 cycles
+            lcd,
         }
     }
 
@@ -218,13 +222,12 @@ impl Ppu {
 
     // drawing (mode: 3) のときは OAM と VRAM にアクセスできないので、
     // M-cycle ごとの厳密な実装ではなく、 drawing の際にレンダリングすることで実装を簡略化している
-    pub fn emulate_cycle(&mut self, elapsed_cycle: u8) -> bool {
+    pub fn emulate_cycle(&mut self) -> bool {
         if self.lcdc & PPU_ENABLE == 0 {
             return false;
         }
 
-        //self.cycles -= 1;
-        self.cycles -= elapsed_cycle as i16;
+        self.cycles -= 1;
         if self.cycles > 0 {
             return false;
         }
@@ -236,10 +239,10 @@ impl Ppu {
                 self.ly += 1;
                 if self.ly < 144 {
                     self.mode = Mode::OAMScan;
-                    self.cycles += 20;
+                    self.cycles = 20;
                 } else {
                     self.mode = Mode::VBlank;
-                    self.cycles += 114
+                    self.cycles = 114
                 }
                 self.check_lyc_eq_ly();
             }
@@ -248,21 +251,21 @@ impl Ppu {
                 if self.ly > 153 {
                     self.ly = 0;
                     self.mode = Mode::OAMScan;
-                    self.cycles += 20;
+                    self.cycles = 20;
                     need_vsync = true;
                 } else {
-                    self.cycles += 114;
+                    self.cycles = 114;
                 }
                 self.check_lyc_eq_ly();
             }
             Mode::OAMScan => {
                 self.mode = Mode::Drawing;
-                self.cycles += 43;
+                self.cycles = 43;
             }
             Mode::Drawing => {
                 self.render_bg();
                 self.mode = Mode::HBlank;
-                self.cycles += 51;
+                self.cycles = 51;
             }
         }
         need_vsync
@@ -286,5 +289,9 @@ impl Ppu {
             .iter()
             .flat_map(|&e| iter::repeat(e.into()).take(3))
             .collect::<Box<[u8]>>()
+    }
+
+    pub fn draw(&self) {
+        self.lcd.draw(&self.pixel_buffer());
     }
 }

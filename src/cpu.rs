@@ -14,7 +14,6 @@ struct Ctx {
     opcode: u8,
     cb: bool,
     interrupt: bool,
-    elapsed_cycle: u8,
 }
 
 pub struct Cpu {
@@ -35,8 +34,7 @@ impl Cpu {
             ctx: Ctx::default(),
         }
     }
-    pub fn emulate_cycle(&mut self, bus: &mut Bus) -> u8 {
-        self.ctx.elapsed_cycle = 1;
+    pub fn emulate_cycle(&mut self, bus: &mut Bus) {
         if self.ctx.interrupt {
             self.call_isr(bus);
         } else {
@@ -53,8 +51,6 @@ impl Cpu {
             self.interrupts.ime = true;
             self.ei_delay = false;
         }
-        //println!(" elapsed_cycle: {}", self.ctx.elapsed_cycle);
-        return self.ctx.elapsed_cycle;
     }
 
     fn call_isr(&mut self, bus: &mut Bus) {
@@ -74,18 +70,18 @@ impl Cpu {
         self.ctx.interrupt = false;
     }
 
-    fn tick(&mut self) {
-        self.ctx.elapsed_cycle += 1;
+    fn tick(&mut self, bus: &Bus) {
+        bus.tick();
     }
 
     fn read_bus(&mut self, bus: &Bus, addr: u16) -> u8 {
         let val = bus.read(&self.interrupts, addr);
-        self.tick();
+        self.tick(bus);
         val
     }
 
     fn write_bus(&mut self, bus: &mut Bus, addr: u16, val: u8) {
         bus.write(&mut self.interrupts, addr, val);
-        self.tick();
+        self.tick(bus);
     }
 }
