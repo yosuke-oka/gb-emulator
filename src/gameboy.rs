@@ -2,7 +2,7 @@ use sdl2::{self, event::Event, keyboard::Keycode, Sdl};
 
 use std::time;
 
-use crate::{bootrom::BootRom, cartridge::Cartridge, cpu::Cpu, lcd::LCD, peripherals::Peripherals};
+use crate::{bootrom::BootRom, bus::Bus, cartridge::Cartridge, cpu::Cpu, lcd::LCD};
 
 pub const CPU_CLOCK_HZ: u128 = 4_194_304;
 pub const M_CYCLE_CLOCK: u128 = 4;
@@ -10,7 +10,7 @@ const M_CYCLE_NANOS: u128 = M_CYCLE_CLOCK * 1_000_000_000 / CPU_CLOCK_HZ;
 
 pub struct GameBoy {
     cpu: Cpu,
-    peripherals: Peripherals,
+    bus: Bus,
     lcd: LCD,
     sdl: Sdl,
 }
@@ -20,7 +20,7 @@ impl GameBoy {
         let sdl = sdl2::init().expect("failed to initialize SDL");
         Self {
             cpu: Cpu::new(),
-            peripherals: Peripherals::new(bootrom, cartridge),
+            bus: Bus::new(bootrom, cartridge),
             lcd: LCD::new(&sdl, 4),
             sdl,
         }
@@ -43,20 +43,20 @@ impl GameBoy {
                         _ => {}
                     }
                 }
-                let elapsed_m_cycle = self.cpu.emulate_cycle(&mut self.peripherals);
-                self.peripherals
+                let elapsed_m_cycle = self.cpu.emulate_cycle(&mut self.bus);
+                self.bus
                     .timer
                     .emulate_cycle(elapsed_m_cycle, &mut self.cpu.interrupts);
-                if let Some(addr) = self.peripherals.ppu.oam_dma {
+                if let Some(addr) = self.bus.ppu.oam_dma {
                     // TODO: 実装があっているか不明かつ、ppuに処理を移動したい
                     for i in 0..0xA0 {
-                        let data = self.peripherals.read(&self.cpu.interrupts, addr + i);
-                        self.peripherals.ppu.write_oam(0xFE00 + i, data);
+                        let data = self.bus.read(&self.cpu.interrupts, addr + i);
+                        self.bus.ppu.write_oam(0xFE00 + i, data);
                     }
-                    self.peripherals.ppu.finish_oam_dma();
+                    self.bus.ppu.finish_oam_dma();
                 }
-                if self.peripherals.ppu.emulate_cycle(elapsed_m_cycle) {
-                    self.lcd.draw(&self.peripherals.ppu.pixel_buffer());
+                if self.bus.ppu.emulate_cycle(elapsed_m_cycle) {
+                    self.lcd.draw(&self.bus.ppu.pixel_buffer());
                 }
 
                 elapsed += M_CYCLE_NANOS;

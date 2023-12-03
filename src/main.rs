@@ -3,12 +3,12 @@ use std::{env, fs::File, io::Read};
 use gameboy::GameBoy;
 
 mod bootrom;
+mod bus;
 mod cartridge;
 mod cpu;
 mod gameboy;
 mod hram;
 mod lcd;
-mod peripherals;
 mod ppu;
 mod timer;
 mod wram;

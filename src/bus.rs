@@ -28,7 +28,7 @@ const VRAM_ADDR_END: u16 = 0x9FFF;
 const OAM_ADDR_START: u16 = 0xFE00;
 const OAM_ADDR_END: u16 = 0xFE9F;
 
-pub struct Peripherals {
+pub struct Bus {
     pub bootrom: BootRom,
     pub wram: WRam,
     pub hram: HRam,
@@ -37,7 +37,7 @@ pub struct Peripherals {
     cartridge: Cartridge,
 }
 
-impl Peripherals {
+impl Bus {
     pub fn new(bootrom: BootRom, cartridge: Cartridge) -> Self {
         Self {
             bootrom,

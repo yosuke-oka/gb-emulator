@@ -1,14 +1,14 @@
+use crate::bus::Bus;
 use crate::cpu::Cpu;
-use crate::peripherals::Peripherals;
 
 pub trait IO8<T: Copy> {
-    fn read8(&mut self, bus: &Peripherals, src: T) -> u8;
-    fn write8(&mut self, bus: &mut Peripherals, dst: T, val: u8);
+    fn read8(&mut self, bus: &Bus, src: T) -> u8;
+    fn write8(&mut self, bus: &mut Bus, dst: T, val: u8);
 }
 
 pub trait IO16<T: Copy> {
-    fn read16(&mut self, bus: &Peripherals, src: T) -> u16;
-    fn write16(&mut self, bus: &mut Peripherals, dst: T, val: u16);
+    fn read16(&mut self, bus: &Bus, src: T) -> u16;
+    fn write16(&mut self, bus: &mut Bus, dst: T, val: u16);
 }
 
 // 8-bit register
@@ -73,7 +73,7 @@ pub enum Cond {
 }
 
 impl IO8<Reg8> for Cpu {
-    fn read8(&mut self, _: &Peripherals, src: Reg8) -> u8 {
+    fn read8(&mut self, _: &Bus, src: Reg8) -> u8 {
         match src {
             Reg8::A => self.registers.a,
             Reg8::B => self.registers.b,
@@ -85,7 +85,7 @@ impl IO8<Reg8> for Cpu {
         }
     }
 
-    fn write8(&mut self, _: &mut Peripherals, dst: Reg8, val: u8) {
+    fn write8(&mut self, _: &mut Bus, dst: Reg8, val: u8) {
         match dst {
             Reg8::A => self.registers.a = val,
             Reg8::B => self.registers.b = val,
@@ -99,7 +99,7 @@ impl IO8<Reg8> for Cpu {
 }
 
 impl IO16<Reg16> for Cpu {
-    fn read16(&mut self, _: &Peripherals, src: Reg16) -> u16 {
+    fn read16(&mut self, _: &Bus, src: Reg16) -> u16 {
         match src {
             Reg16::AF => self.registers.af(),
             Reg16::BC => self.registers.bc(),
@@ -109,7 +109,7 @@ impl IO16<Reg16> for Cpu {
         }
     }
 
-    fn write16(&mut self, _: &mut Peripherals, dst: Reg16, val: u16) {
+    fn write16(&mut self, _: &mut Bus, dst: Reg16, val: u16) {
         match dst {
             Reg16::AF => self.registers.write_af(val),
             Reg16::BC => self.registers.write_bc(val),
@@ -121,32 +121,32 @@ impl IO16<Reg16> for Cpu {
 }
 
 impl IO8<Imm8> for Cpu {
-    fn read8(&mut self, bus: &Peripherals, _: Imm8) -> u8 {
+    fn read8(&mut self, bus: &Bus, _: Imm8) -> u8 {
         let val = self.read_bus(bus, self.registers.pc);
         self.registers.pc = self.registers.pc.wrapping_add(1);
         return val;
     }
 
-    fn write8(&mut self, _: &mut Peripherals, _: Imm8, _: u8) {
+    fn write8(&mut self, _: &mut Bus, _: Imm8, _: u8) {
         unreachable!()
     }
 }
 
 // 2 M-cycle
 impl IO16<Imm16> for Cpu {
-    fn read16(&mut self, bus: &Peripherals, _: Imm16) -> u16 {
+    fn read16(&mut self, bus: &Bus, _: Imm16) -> u16 {
         let lo = self.read8(bus, Imm8);
         let hi = self.read8(bus, Imm8);
         u16::from_le_bytes([lo, hi])
     }
 
-    fn write16(&mut self, _: &mut Peripherals, _: Imm16, _: u16) {
+    fn write16(&mut self, _: &mut Bus, _: Imm16, _: u16) {
         unreachable!()
     }
 }
 
 impl IO8<Indirect> for Cpu {
-    fn read8(&mut self, bus: &Peripherals, src: Indirect) -> u8 {
+    fn read8(&mut self, bus: &Bus, src: Indirect) -> u8 {
         match src {
             Indirect::BC => self.read_bus(bus, self.registers.bc()),
             Indirect::DE => self.read_bus(bus, self.registers.de()),
@@ -165,7 +165,7 @@ impl IO8<Indirect> for Cpu {
         }
     }
 
-    fn write8(&mut self, bus: &mut Peripherals, dst: Indirect, val: u8) {
+    fn write8(&mut self, bus: &mut Bus, dst: Indirect, val: u8) {
         match dst {
             Indirect::BC => self.write_bus(bus, self.registers.bc(), val),
             Indirect::DE => self.write_bus(bus, self.registers.de(), val),
@@ -186,7 +186,7 @@ impl IO8<Indirect> for Cpu {
 }
 
 impl IO8<Direct8> for Cpu {
-    fn read8(&mut self, bus: &Peripherals, src: Direct8) -> u8 {
+    fn read8(&mut self, bus: &Bus, src: Direct8) -> u8 {
         let lo = self.read8(bus, Imm8);
         let hi = if let Direct8::DFF = src {
             0xFF
@@ -196,7 +196,7 @@ impl IO8<Direct8> for Cpu {
         self.read_bus(bus, u16::from_le_bytes([lo, hi]))
     }
 
-    fn write8(&mut self, bus: &mut Peripherals, dst: Direct8, val: u8) {
+    fn write8(&mut self, bus: &mut Bus, dst: Direct8, val: u8) {
         let lo = self.read8(bus, Imm8);
         let hi = if let Direct8::DFF = dst {
             0xFF
@@ -208,11 +208,11 @@ impl IO8<Direct8> for Cpu {
 }
 
 impl IO16<Direct16> for Cpu {
-    fn read16(&mut self, _: &Peripherals, _: Direct16) -> u16 {
+    fn read16(&mut self, _: &Bus, _: Direct16) -> u16 {
         unreachable!()
     }
 
-    fn write16(&mut self, bus: &mut Peripherals, _: Direct16, val: u16) {
+    fn write16(&mut self, bus: &mut Bus, _: Direct16, val: u16) {
         let lo = self.read8(bus, Imm8);
         let hi = self.read8(bus, Imm8);
         self.write_bus(bus, u16::from_le_bytes([lo, hi]), val as u8);

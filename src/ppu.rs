@@ -1,10 +1,5 @@
 use std::iter;
 
-use crate::{
-    cpu::interrupt::{self, Interrupts},
-    peripherals::Peripherals,
-};
-
 pub const LCD_WIDTH: usize = 160;
 pub const LCD_HEIGHT: usize = 144;
 pub const LCD_PIXELS: usize = LCD_WIDTH * LCD_HEIGHT;
@@ -21,7 +16,7 @@ const OBP0_ADDR: u16 = 0xFF48;
 const OBP1_ADDR: u16 = 0xFF49;
 const WY_ADDR: u16 = 0xFF4A;
 const WX_ADDR: u16 = 0xFF4B;
-// TODO: 以下 peripherals にも記載しているので DRYじゃない
+// TODO: 以下 bus にも記載しているので DRYじゃない
 const VRAM_ADDR_START: u16 = 0x8000;
 const VRAM_ADDR_END: u16 = 0x9FFF;
 const OAM_ADDR_START: u16 = 0xFE00;

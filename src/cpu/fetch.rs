@@ -1,8 +1,8 @@
+use crate::bus::Bus;
 use crate::cpu::Cpu;
-use crate::peripherals::Peripherals;
 
 impl Cpu {
-    pub fn fetch(&mut self, bus: &Peripherals) {
+    pub fn fetch(&mut self, bus: &Bus) {
         self.ctx.opcode = self.read_bus(bus, self.registers.pc);
         if self.interrupts.ime && self.interrupts.get_interrupt() != 0 {
             self.ctx.interrupt = true;

@@ -1,12 +1,12 @@
+use crate::bus::Bus;
 use crate::cpu::Cpu;
-use crate::peripherals::Peripherals;
 
 use super::operand::{Cond, Direct16, Direct8, Imm16, Imm8, Indirect, Reg16, Reg8, IO8};
 
 impl Cpu {
     // gameboy opecodes
     // https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
-    pub fn decode(&mut self, bus: &mut Peripherals) {
+    pub fn decode(&mut self, bus: &mut Bus) {
         if self.ctx.cb {
             self.cb_decode(bus);
             return;
@@ -272,7 +272,7 @@ impl Cpu {
         }
     }
 
-    pub fn cb_decode(&mut self, bus: &mut Peripherals) {
+    pub fn cb_decode(&mut self, bus: &mut Bus) {
         //print!(" opecode: {:02x} cb: t", self.ctx.opcode);
         match self.ctx.opcode {
             0x00 => self.rlc(bus, Reg8::B),
@@ -534,7 +534,7 @@ impl Cpu {
         }
     }
 
-    pub fn cb_prefixed(&mut self, bus: &mut Peripherals) {
+    pub fn cb_prefixed(&mut self, bus: &mut Bus) {
         let v = self.read8(bus, Imm8);
         // TODO: need tick here ?
         //self.tick();

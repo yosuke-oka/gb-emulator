@@ -7,7 +7,7 @@ mod registers;
 
 use self::interrupt::{Interrupts, JOYPAD, LCD_STAT, SERIAL, TIMER, VBLANK};
 use self::registers::Registers;
-use crate::peripherals::Peripherals;
+use crate::bus::Bus;
 
 #[derive(Default)]
 struct Ctx {
@@ -35,7 +35,7 @@ impl Cpu {
             ctx: Ctx::default(),
         }
     }
-    pub fn emulate_cycle(&mut self, bus: &mut Peripherals) -> u8 {
+    pub fn emulate_cycle(&mut self, bus: &mut Bus) -> u8 {
         self.ctx.elapsed_cycle = 1;
         if self.ctx.interrupt {
             self.call_isr(bus);
@@ -57,7 +57,7 @@ impl Cpu {
         return self.ctx.elapsed_cycle;
     }
 
-    fn call_isr(&mut self, bus: &mut Peripherals) {
+    fn call_isr(&mut self, bus: &mut Bus) {
         self.push16(bus, self.registers.pc);
         let highest_interrupt = 1 << self.interrupts.get_interrupt().trailing_zeros();
         self.interrupts.interrupt_flags &= !highest_interrupt;
@@ -78,13 +78,13 @@ impl Cpu {
         self.ctx.elapsed_cycle += 1;
     }
 
-    fn read_bus(&mut self, bus: &Peripherals, addr: u16) -> u8 {
+    fn read_bus(&mut self, bus: &Bus, addr: u16) -> u8 {
         let val = bus.read(&self.interrupts, addr);
         self.tick();
         val
     }
 
-    fn write_bus(&mut self, bus: &mut Peripherals, addr: u16, val: u8) {
+    fn write_bus(&mut self, bus: &mut Bus, addr: u16, val: u8) {
         bus.write(&mut self.interrupts, addr, val);
         self.tick();
     }
