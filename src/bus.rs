@@ -93,7 +93,17 @@ impl Bus {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, interrupts: &mut Interrupts) {
+        self.timer.emulate_cycle(interrupts);
+        if let Some(addr) = self.ppu.oam_dma {
+            self.ppu.oam_dma_emulate_cycle(self.read(interrupts, addr));
+            // TODO: 実装があっているか不明かつ、ppuに処理を移動したい
+            // for i in 0..0xA0 {
+            //     let data = self.bus.read(&self.cpu.interrupts, addr + i);
+            //     self.bus.ppu.write_oam(0xFE00 + i, data);
+            // }
+            // self.bus.ppu.finish_oam_dma();
+        }
         if self.ppu.emulate_cycle() {
             self.ppu.draw();
         }

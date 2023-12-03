@@ -5,16 +5,16 @@ use crate::cpu::{operand::Imm8, Cpu};
 use super::operand::{Cond, Reg16, IO16, IO8};
 
 impl Cpu {
-    pub fn nop(&mut self, _: &Bus) {
+    pub fn nop(&mut self, _: &mut Bus) {
         // nop
     }
 
     // stop
-    pub fn stop(&mut self, _: &Bus) {
+    pub fn stop(&mut self, _: &mut Bus) {
         // omit implementation
     }
 
-    pub fn halt(&mut self, _: &Bus) {
+    pub fn halt(&mut self, _: &mut Bus) {
         if self.interrupts.get_interrupt() == 0 {
             self.halting = true;
         } else {
@@ -40,9 +40,9 @@ impl Cpu {
     }
 
     // load sp <- hl
-    pub fn ld_sp_hl(&mut self, _: &mut Bus) {
+    pub fn ld_sp_hl(&mut self, bus: &mut Bus) {
         self.registers.sp = self.registers.hl();
-        self.tick();
+        self.tick(bus);
     }
 
     // load hl <- sp + e
@@ -55,11 +55,11 @@ impl Cpu {
         self.registers.set_hf((sp & 0xf) + (e & 0xf) > 0xf);
         self.registers.set_cf((sp & 0xff) + (e & 0xff) > 0xff);
         self.registers.write_hl(result);
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // compare A register with src
-    pub fn cp<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn cp<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -73,7 +73,7 @@ impl Cpu {
     }
 
     // add src to A register
-    pub fn add<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn add<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -96,7 +96,7 @@ impl Cpu {
         self.registers.set_hf((hl & 0xfff) + (val & 0xfff) > 0xfff);
         self.registers.set_cf(carry);
         self.registers.write_hl(result);
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // add sp + e
@@ -109,11 +109,11 @@ impl Cpu {
         self.registers.set_hf((sp & 0xf) + (e & 0xf) > 0xf);
         self.registers.set_cf((sp & 0xff) + (e & 0xff) > 0xff);
         self.registers.sp = result;
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // add src + carry to A register
-    pub fn adc<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn adc<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -130,7 +130,7 @@ impl Cpu {
     }
 
     // subtract src from A register
-    pub fn sub<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn sub<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -145,7 +145,7 @@ impl Cpu {
     }
 
     // subtract src + carry from A register
-    pub fn sbc<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn sbc<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -162,7 +162,7 @@ impl Cpu {
     }
 
     // logical and src with A register
-    pub fn and<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn and<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -176,7 +176,7 @@ impl Cpu {
     }
 
     // logical or src with A register
-    pub fn or<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn or<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -190,7 +190,7 @@ impl Cpu {
     }
 
     // logical xor src with A register
-    pub fn xor<S: Copy>(&mut self, bus: &Bus, src: S)
+    pub fn xor<S: Copy>(&mut self, bus: &mut Bus, src: S)
     where
         Self: IO8<S>,
     {
@@ -446,7 +446,7 @@ impl Cpu {
     }
 
     // check bit n of src
-    pub fn bit<S: Copy>(&mut self, bus: &Bus, n: u8, src: S)
+    pub fn bit<S: Copy>(&mut self, bus: &mut Bus, n: u8, src: S)
     where
         Self: IO8<S>,
     {
@@ -478,7 +478,7 @@ impl Cpu {
     pub fn push(&mut self, bus: &mut Bus, src: Reg16) {
         let val = self.read16(bus, src);
         self.push16(bus, val);
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     pub fn push16(&mut self, bus: &mut Bus, val: u16) {
@@ -504,10 +504,10 @@ impl Cpu {
     }
 
     // jump relative
-    pub fn jr(&mut self, bus: &Bus) {
+    pub fn jr(&mut self, bus: &mut Bus) {
         let val = self.read8(bus, Imm8);
         self.registers.pc = self.registers.pc.wrapping_add(val as i8 as u16);
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     fn cond(&self, cond: Cond) -> bool {
@@ -520,12 +520,12 @@ impl Cpu {
     }
 
     // jump relative if condition
-    pub fn jr_c(&mut self, bus: &Bus, c: Cond) {
+    pub fn jr_c(&mut self, bus: &mut Bus, c: Cond) {
         let val = self.read8(bus, Imm8);
 
         if self.cond(c) {
             self.registers.pc = self.registers.pc.wrapping_add(val as i8 as u16);
-            self.tick(); // cycle +1
+            self.tick(bus); // cycle +1
         }
     }
 
@@ -533,7 +533,7 @@ impl Cpu {
     pub fn jp(&mut self, bus: &mut Bus) {
         let val = self.read16(bus, Imm16);
         self.registers.pc = val;
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // jump if condition
@@ -542,7 +542,7 @@ impl Cpu {
 
         if self.cond(c) {
             self.registers.pc = val;
-            self.tick(); // cycle +1
+            self.tick(bus); // cycle +1
         }
     }
 
@@ -556,7 +556,7 @@ impl Cpu {
         let val = self.read16(bus, Imm16);
         self.push16(bus, self.registers.pc);
         self.registers.pc = val;
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // call subroutine if condition
@@ -566,7 +566,7 @@ impl Cpu {
         if self.cond(c) {
             self.push16(bus, self.registers.pc);
             self.registers.pc = val;
-            self.tick(); // cycle +1
+            self.tick(bus); // cycle +1
         }
     }
 
@@ -574,16 +574,16 @@ impl Cpu {
     pub fn ret(&mut self, bus: &mut Bus) {
         let val = self.pop16(bus);
         self.registers.pc = val;
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // return from subroutine if condition
     pub fn ret_c(&mut self, bus: &mut Bus, c: Cond) {
-        self.tick();
+        self.tick(bus);
         if self.cond(c) {
             let val = self.pop16(bus);
             self.registers.pc = val;
-            self.tick(); // cycle +1
+            self.tick(bus); // cycle +1
         }
     }
 
@@ -597,7 +597,7 @@ impl Cpu {
     pub fn rst(&mut self, bus: &mut Bus, addr: u16) {
         self.push16(bus, self.registers.pc);
         self.registers.pc = addr;
-        self.tick(); // cycle +1
+        self.tick(bus); // cycle +1
     }
 
     // cy=cy xor 1
@@ -615,12 +615,12 @@ impl Cpu {
     }
 
     // enable interrupts
-    pub fn ei(&mut self, _: &Bus) {
+    pub fn ei(&mut self, _: &mut Bus) {
         self.ei_delay = true;
     }
 
     // disable interrupts
-    pub fn di(&mut self, _: &Bus) {
+    pub fn di(&mut self, _: &mut Bus) {
         self.interrupts.ime = false;
     }
 

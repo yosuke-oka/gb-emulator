@@ -271,6 +271,16 @@ impl Ppu {
         need_vsync
     }
 
+    pub fn oam_dma_emulate_cycle(&mut self, val: u8) {
+        if let Some(addr) = self.oam_dma {
+            if self.mode != Mode::OAMScan && self.mode != Mode::Drawing {
+                // can not write oam during oam scan or drawing
+                self.oam[addr as usize & 0xFF] = val;
+            }
+            self.oam_dma = Some(addr.wrapping_add(1)).filter(|&x| (x as u8) < 0xA0);
+        }
+    }
+
     pub fn write_oam(&mut self, addr: u16, val: u8) {
         if self.mode != Mode::OAMScan && self.mode != Mode::Drawing {
             // can not write oam during oam scan or drawing
@@ -291,7 +301,7 @@ impl Ppu {
             .collect::<Box<[u8]>>()
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&mut self) {
         self.lcd.draw(&self.pixel_buffer());
     }
 }

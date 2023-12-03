@@ -2,12 +2,12 @@ use crate::bus::Bus;
 use crate::cpu::Cpu;
 
 pub trait IO8<T: Copy> {
-    fn read8(&mut self, bus: &Bus, src: T) -> u8;
+    fn read8(&mut self, bus: &mut Bus, src: T) -> u8;
     fn write8(&mut self, bus: &mut Bus, dst: T, val: u8);
 }
 
 pub trait IO16<T: Copy> {
-    fn read16(&mut self, bus: &Bus, src: T) -> u16;
+    fn read16(&mut self, bus: &mut Bus, src: T) -> u16;
     fn write16(&mut self, bus: &mut Bus, dst: T, val: u16);
 }
 
@@ -73,7 +73,7 @@ pub enum Cond {
 }
 
 impl IO8<Reg8> for Cpu {
-    fn read8(&mut self, _: &Bus, src: Reg8) -> u8 {
+    fn read8(&mut self, _: &mut Bus, src: Reg8) -> u8 {
         match src {
             Reg8::A => self.registers.a,
             Reg8::B => self.registers.b,
@@ -99,7 +99,7 @@ impl IO8<Reg8> for Cpu {
 }
 
 impl IO16<Reg16> for Cpu {
-    fn read16(&mut self, _: &Bus, src: Reg16) -> u16 {
+    fn read16(&mut self, _: &mut Bus, src: Reg16) -> u16 {
         match src {
             Reg16::AF => self.registers.af(),
             Reg16::BC => self.registers.bc(),
@@ -121,7 +121,7 @@ impl IO16<Reg16> for Cpu {
 }
 
 impl IO8<Imm8> for Cpu {
-    fn read8(&mut self, bus: &Bus, _: Imm8) -> u8 {
+    fn read8(&mut self, bus: &mut Bus, _: Imm8) -> u8 {
         let val = self.read_bus(bus, self.registers.pc);
         self.registers.pc = self.registers.pc.wrapping_add(1);
         return val;
@@ -134,7 +134,7 @@ impl IO8<Imm8> for Cpu {
 
 // 2 M-cycle
 impl IO16<Imm16> for Cpu {
-    fn read16(&mut self, bus: &Bus, _: Imm16) -> u16 {
+    fn read16(&mut self, bus: &mut Bus, _: Imm16) -> u16 {
         let lo = self.read8(bus, Imm8);
         let hi = self.read8(bus, Imm8);
         u16::from_le_bytes([lo, hi])
@@ -146,7 +146,7 @@ impl IO16<Imm16> for Cpu {
 }
 
 impl IO8<Indirect> for Cpu {
-    fn read8(&mut self, bus: &Bus, src: Indirect) -> u8 {
+    fn read8(&mut self, bus: &mut Bus, src: Indirect) -> u8 {
         match src {
             Indirect::BC => self.read_bus(bus, self.registers.bc()),
             Indirect::DE => self.read_bus(bus, self.registers.de()),
@@ -186,7 +186,7 @@ impl IO8<Indirect> for Cpu {
 }
 
 impl IO8<Direct8> for Cpu {
-    fn read8(&mut self, bus: &Bus, src: Direct8) -> u8 {
+    fn read8(&mut self, bus: &mut Bus, src: Direct8) -> u8 {
         let lo = self.read8(bus, Imm8);
         let hi = if let Direct8::DFF = src {
             0xFF
@@ -208,7 +208,7 @@ impl IO8<Direct8> for Cpu {
 }
 
 impl IO16<Direct16> for Cpu {
-    fn read16(&mut self, _: &Bus, _: Direct16) -> u16 {
+    fn read16(&mut self, _: &mut Bus, _: Direct16) -> u16 {
         unreachable!()
     }
 

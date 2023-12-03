@@ -41,10 +41,13 @@ impl Cpu {
             self.decode(bus);
         }
 
-        // fetch / execute overlap
-        if !self.halting {
-            self.fetch(bus);
+        if self.halting {
+            self.tick(bus);
+            return;
         }
+
+        // fetch / execute overlap
+        self.fetch(bus);
 
         // ei は fetch のあとに割り込みフラグをtrueにする
         if self.ei_delay {
@@ -70,11 +73,11 @@ impl Cpu {
         self.ctx.interrupt = false;
     }
 
-    fn tick(&mut self, bus: &Bus) {
-        bus.tick();
+    fn tick(&mut self, bus: &mut Bus) {
+        bus.tick(&mut self.interrupts);
     }
 
-    fn read_bus(&mut self, bus: &Bus, addr: u16) -> u8 {
+    fn read_bus(&mut self, bus: &mut Bus, addr: u16) -> u8 {
         let val = bus.read(&self.interrupts, addr);
         self.tick(bus);
         val

@@ -2,7 +2,7 @@ use crate::bus::Bus;
 use crate::cpu::Cpu;
 
 impl Cpu {
-    pub fn fetch(&mut self, bus: &Bus) {
+    pub fn fetch(&mut self, bus: &mut Bus) {
         self.ctx.opcode = self.read_bus(bus, self.registers.pc);
         if self.interrupts.ime && self.interrupts.get_interrupt() != 0 {
             self.ctx.interrupt = true;
