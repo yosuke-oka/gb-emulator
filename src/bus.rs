@@ -104,7 +104,7 @@ impl Bus {
             // }
             // self.bus.ppu.finish_oam_dma();
         }
-        if self.ppu.emulate_cycle() {
+        if self.ppu.emulate_cycle(interrupts) {
             self.ppu.draw();
         }
     }

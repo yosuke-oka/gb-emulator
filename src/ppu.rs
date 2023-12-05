@@ -1,6 +1,9 @@
 use std::iter;
 
-use crate::lcd::LCD;
+use crate::{
+    cpu::interrupt::{self, Interrupts},
+    lcd::LCD,
+};
 
 pub const LCD_WIDTH: usize = 160;
 pub const LCD_HEIGHT: usize = 144;
@@ -326,9 +329,12 @@ impl Ppu {
         }
     }
 
-    fn check_lyc_eq_ly(&mut self) {
+    fn check_lyc_eq_ly(&mut self, interrupts: &mut Interrupts) {
         if self.ly == self.lyc {
             self.stat |= LYC_LY_COINCIDENCE;
+            if self.stat & LYC_LY_INTERRUPT != 0 {
+                interrupts.irq(interrupt::LCD_STAT);
+            }
         } else {
             self.stat &= !LYC_LY_COINCIDENCE;
         }
@@ -336,7 +342,7 @@ impl Ppu {
 
     // drawing (mode: 3) のときは OAM と VRAM にアクセスできないので、
     // M-cycle ごとの厳密な実装ではなく、 drawing の際にレンダリングすることで実装を簡略化している
-    pub fn emulate_cycle(&mut self) -> bool {
+    pub fn emulate_cycle(&mut self, interrupts: &mut Interrupts) -> bool {
         if self.lcdc & PPU_ENABLE == 0 {
             return false;
         }
@@ -354,11 +360,18 @@ impl Ppu {
                 if self.ly < 144 {
                     self.mode = Mode::OAMScan;
                     self.cycles = 20;
+                    if self.stat & OAM_INTERRUPT != 0 {
+                        interrupts.irq(interrupt::LCD_STAT);
+                    }
                 } else {
                     self.mode = Mode::VBlank;
-                    self.cycles = 114
+                    self.cycles = 114;
+                    interrupts.irq(interrupt::VBLANK);
+                    if self.stat & VBLANK_INTERRUPT != 0 {
+                        interrupts.irq(interrupt::LCD_STAT);
+                    }
                 }
-                self.check_lyc_eq_ly();
+                self.check_lyc_eq_ly(interrupts);
             }
             Mode::VBlank => {
                 self.ly += 1;
@@ -368,19 +381,28 @@ impl Ppu {
                     self.mode = Mode::OAMScan;
                     self.cycles = 20;
                     need_vsync = true;
+                    if self.stat & OAM_INTERRUPT != 0 {
+                        interrupts.irq(interrupt::LCD_STAT);
+                    }
                 } else {
                     self.cycles = 114;
                 }
-                self.check_lyc_eq_ly();
+                self.check_lyc_eq_ly(interrupts);
             }
             Mode::OAMScan => {
                 self.mode = Mode::Drawing;
                 self.cycles = 43;
             }
             Mode::Drawing => {
+                let mut bg_prio = [false; LCD_WIDTH];
                 self.render_bg();
+                self.render_window();
+                self.render_sprite(&bg_prio);
                 self.mode = Mode::HBlank;
                 self.cycles = 51;
+                if self.stat & HBLANK_INTERRUPT != 0 {
+                    interrupts.irq(interrupt::LCD_STAT);
+                }
             }
         }
         need_vsync
