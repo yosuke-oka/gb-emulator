@@ -41,6 +41,12 @@ const VBLANK_INTERRUPT: u8 = 1 << 4;
 const HBLANK_INTERRUPT: u8 = 1 << 3;
 const LYC_LY_COINCIDENCE: u8 = 1 << 2;
 
+// sprite flags
+const OBJ2BG_PRIORITY: u8 = 1 << 7;
+const Y_FLIP: u8 = 1 << 6;
+const X_FLIP: u8 = 1 << 5;
+const PALETTE: u8 = 1 << 4;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
     HBlank = 0,
@@ -68,6 +74,15 @@ pub struct Ppu {
     buffer: Box<[u8; LCD_PIXELS * 4]>,
     cycles: u16,
     lcd: LCD, // TODO: 一般化
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Sprite {
+    pub y: u8,
+    pub x: u8,
+    pub tile_idx: u8,
+    pub flags: u8,
 }
 
 impl Ppu {
@@ -221,6 +236,73 @@ impl Ppu {
             }
         }
         self.wy += wy_add;
+    }
+
+    fn render_sprite(&mut self, bg_prio: &[bool; LCD_WIDTH]) {
+        if self.lcdc & SPRITE_ENABLE == 0 {
+            return;
+        }
+
+        let size = if self.lcdc & SPRITE_SIZE == 0 { 8 } else { 16 };
+
+        let mut sprites: Vec<Sprite> =
+            unsafe { std::mem::transmute::<[u8; 0xA0], [Sprite; 40]>(self.oam.as_ref().clone()) }
+                .into_iter()
+                .filter_map(|mut sprite| {
+                    sprite.y = sprite.y.wrapping_sub(16);
+                    sprite.x = sprite.x.wrapping_sub(8);
+                    if self.ly.wrapping_sub(sprite.y) < size {
+                        Some(sprite)
+                    } else {
+                        None
+                    }
+                })
+                .take(10)
+                .collect();
+        sprites.reverse();
+        sprites.sort_by(|&a, &b| b.x.cmp(&a.x));
+
+        for sprite in sprites {
+            let palette = if sprite.flags & PALETTE == 0 {
+                self.obp0
+            } else {
+                self.obp1
+            };
+            let mut tile_idx = sprite.tile_idx as usize;
+            let mut row = if sprite.flags & Y_FLIP == 0 {
+                self.ly.wrapping_sub(sprite.y)
+            } else {
+                size - 1 - self.ly.wrapping_sub(sprite.y)
+            };
+            if size == 16 {
+                tile_idx &= 0xFE;
+            }
+            tile_idx += (row >= 8) as usize;
+
+            row &= 7;
+
+            for col in 0..8 {
+                let col_flipped = if sprite.flags & X_FLIP == 0 {
+                    col
+                } else {
+                    7 - col
+                };
+                let pixel = self.get_pixel_from_tile(tile_idx, row, col_flipped);
+                let i = sprite.x.wrapping_add(col) as usize;
+                if i < LCD_WIDTH && pixel != 0 {
+                    if sprite.flags & OBJ2BG_PRIORITY == 0 || !bg_prio[i] {
+                        self.buffer[LCD_WIDTH * self.ly as usize + i] =
+                            match (palette >> (pixel << 1)) & 0b11 {
+                                0b00 => 0xFF,
+                                0b01 => 0xAA,
+                                0b10 => 0x55,
+                                0b11 => 0x00,
+                                _ => unreachable!(),
+                            }
+                    }
+                }
+            }
+        }
     }
 
     fn render_bg(&mut self) {
