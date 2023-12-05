@@ -191,6 +191,38 @@ impl Ppu {
         }
     }
 
+    fn render_window(&mut self) {
+        if self.lcdc & WINDOW_ENABLE == 0 || self.lcdc & BG_WINDOW_ENABLE == 0 || self.wy > self.ly
+        {
+            return;
+        }
+        let mut wy_add = 0;
+        let y = self.wy;
+        for i in 0..LCD_WIDTH {
+            let (x, overflow) = (i as u8).overflowing_sub(self.wx.wrapping_sub(7));
+            if overflow {
+                continue;
+            }
+
+            wy_add = 1;
+
+            let tile_index =
+                self.get_tile_idx_from_tile_map(self.lcdc & WINDOW_TILE_MAP > 0, y >> 3, x >> 3);
+
+            let pixel = self.get_pixel_from_tile(tile_index, y & 7, x & 7);
+
+            self.buffer[LCD_WIDTH * self.ly as usize + i] = match (self.bgp >> (pixel << 1)) & 0b11
+            {
+                0b00 => 0xFF,
+                0b01 => 0xAA,
+                0b10 => 0x55,
+                0b11 => 0x00,
+                _ => unreachable!(),
+            }
+        }
+        self.wy += wy_add;
+    }
+
     fn render_bg(&mut self) {
         if self.lcdc & BG_WINDOW_ENABLE == 0 {
             return;
@@ -250,6 +282,7 @@ impl Ppu {
                 self.ly += 1;
                 if self.ly > 153 {
                     self.ly = 0;
+                    self.wy = 0;
                     self.mode = Mode::OAMScan;
                     self.cycles = 20;
                     need_vsync = true;
