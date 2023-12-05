@@ -17,6 +17,7 @@ impl Timer {
             return;
         }
 
+        //println!("tima: {}, tma: {}", self.tima, self.tma);
         let modulo = match self.tac & 0b11 {
             0b00 => 1024,
             0b01 => 16,

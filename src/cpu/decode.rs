@@ -12,7 +12,7 @@ impl Cpu {
             return;
         }
         // print!("opecode: {:02x}", self.ctx.opcode);
-        // print!(" registers: {:?}", self.registers);
+        // println!(" registers: {:?}", self.registers);
         match self.ctx.opcode {
             0x00 => self.nop(bus),
             0x10 => self.stop(bus),

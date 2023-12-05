@@ -109,7 +109,8 @@ impl Cpu {
         self.registers.set_hf((sp & 0xf) + (e & 0xf) > 0xf);
         self.registers.set_cf((sp & 0xff) + (e & 0xff) > 0xff);
         self.registers.sp = result;
-        self.tick(bus); // cycle +1
+        self.tick(bus); // cycle +2
+        self.tick(bus);
     }
 
     // add src + carry to A register
@@ -222,6 +223,7 @@ impl Cpu {
     {
         let val = self.read16(bus, src);
         let result = val.wrapping_add(1);
+        self.tick(bus);
         self.write16(bus, src, result);
     }
 
@@ -244,6 +246,7 @@ impl Cpu {
     {
         let val = self.read16(bus, src);
         let result = val.wrapping_sub(1);
+        self.tick(bus);
         self.write16(bus, src, result);
     }
 
