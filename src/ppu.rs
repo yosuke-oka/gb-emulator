@@ -71,6 +71,7 @@ pub struct Ppu {
     obp1: u8,                // object palette 1
     wy: u8,                  // window y
     wx: u8,                  // window x
+    wly: u8,                 // window line y
     vram: Box<[u8; 0x2000]>, // 8 KiB video ram
     oam: Box<[u8; 0xA0]>,    // 160 B object attribute memory
     pub oam_dma: Option<u16>,
@@ -103,6 +104,7 @@ impl Ppu {
             obp1: 0,
             wy: 0,
             wx: 0,
+            wly: 0,
             vram: Box::new([0; 0x2000]),
             oam: Box::new([0; 0xA0]),
             oam_dma: None,
@@ -209,20 +211,20 @@ impl Ppu {
         }
     }
 
-    fn render_window(&mut self) {
+    fn render_window(&mut self, bg_prio: &mut [bool; LCD_WIDTH]) {
         if self.lcdc & WINDOW_ENABLE == 0 || self.lcdc & BG_WINDOW_ENABLE == 0 || self.wy > self.ly
         {
             return;
         }
-        let mut wy_add = 0;
-        let y = self.wy;
+        let mut wly_add = 0;
+        let y = self.wly;
         for i in 0..LCD_WIDTH {
             let (x, overflow) = (i as u8).overflowing_sub(self.wx.wrapping_sub(7));
             if overflow {
                 continue;
             }
 
-            wy_add = 1;
+            wly_add = 1;
 
             let tile_index =
                 self.get_tile_idx_from_tile_map(self.lcdc & WINDOW_TILE_MAP > 0, y >> 3, x >> 3);
@@ -236,9 +238,10 @@ impl Ppu {
                 0b10 => 0x55,
                 0b11 => 0x00,
                 _ => unreachable!(),
-            }
+            };
+            bg_prio[i] = pixel != 0;
         }
-        self.wy += wy_add;
+        self.wly += wly_add;
     }
 
     fn render_sprite(&mut self, bg_prio: &[bool; LCD_WIDTH]) {
@@ -308,7 +311,7 @@ impl Ppu {
         }
     }
 
-    fn render_bg(&mut self) {
+    fn render_bg(&mut self, bg_prio: &mut [bool; LCD_WIDTH]) {
         if self.lcdc & BG_WINDOW_ENABLE == 0 {
             return;
         }
@@ -325,7 +328,8 @@ impl Ppu {
                 0b10 => 0x55,
                 0b11 => 0x00,
                 _ => unreachable!(),
-            }
+            };
+            bg_prio[i] = pixel != 0;
         }
     }
 
@@ -377,7 +381,7 @@ impl Ppu {
                 self.ly += 1;
                 if self.ly > 153 {
                     self.ly = 0;
-                    self.wy = 0;
+                    self.wly = 0;
                     self.mode = Mode::OAMScan;
                     self.cycles = 20;
                     need_vsync = true;
@@ -395,8 +399,8 @@ impl Ppu {
             }
             Mode::Drawing => {
                 let mut bg_prio = [false; LCD_WIDTH];
-                self.render_bg();
-                self.render_window();
+                self.render_bg(&mut bg_prio);
+                self.render_window(&mut bg_prio);
                 self.render_sprite(&bg_prio);
                 self.mode = Mode::HBlank;
                 self.cycles = 51;
