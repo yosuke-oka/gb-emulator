@@ -136,14 +136,14 @@ impl Ppu {
                 if self.mode == Mode::Drawing {
                     0xFF // can not read vram during drawing
                 } else {
-                    self.vram[(addr - VRAM_ADDR_START) as usize]
+                    self.vram[addr as usize & 0x1FFF]
                 }
             }
             OAM_ADDR_START..=OAM_ADDR_END => {
                 if self.mode == Mode::OAMScan || self.mode == Mode::Drawing {
                     0xFF // can not read oam during oam scan or drawing
                 } else {
-                    self.oam[(addr - OAM_ADDR_START) as usize]
+                    self.oam[addr as usize & 0xFF]
                 }
             }
             _ => panic!("invalid ppu address: 0x{:04X}", addr),
@@ -153,10 +153,10 @@ impl Ppu {
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
             LCDC_ADDR => self.lcdc = val,
-            STAT_ADDR => self.stat = (self.stat & LYC_LY_COINCIDENCE) | (val & 0x78), // can not write 0-2 bits
+            STAT_ADDR => self.stat = (self.stat & LYC_LY_COINCIDENCE) | (val & 0xF8), // can not write 0-2 bits
             SCY_ADDR => self.scy = val,
             SCX_ADDR => self.scx = val,
-            LY_ADDR => self.ly = 0,
+            LY_ADDR => {} // read only
             LYC_ADDR => self.lyc = val,
             DMA_ADDR => {
                 self.oam_dma = Some((val as u16) << 8);
@@ -169,14 +169,14 @@ impl Ppu {
             VRAM_ADDR_START..=VRAM_ADDR_END => {
                 if self.mode != Mode::Drawing {
                     // can not write vram during drawing
-                    self.vram[(addr - VRAM_ADDR_START) as usize] = val;
+                    self.vram[addr as usize & 0x1FFF] = val;
                 }
             }
             OAM_ADDR_START..=OAM_ADDR_END => {
                 if self.mode != Mode::OAMScan && self.mode != Mode::Drawing {
                     // can not write oam during oam scan or drawing
                     if self.oam_dma.is_none() {
-                        self.oam[(addr - OAM_ADDR_START) as usize] = val;
+                        self.oam[addr as usize & 0xFF] = val;
                     }
                 }
             }
