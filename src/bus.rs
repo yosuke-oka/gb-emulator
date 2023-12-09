@@ -2,6 +2,7 @@ use crate::bootrom::BootRom;
 use crate::cartridge::Cartridge;
 use crate::cpu::interrupt::Interrupts;
 use crate::hram::HRam;
+use crate::joypad::Joypad;
 use crate::lcd::LCD;
 use crate::ppu::Ppu;
 use crate::timer::Timer;
@@ -20,6 +21,7 @@ const CARTRIDGE_ADDR2_START: u16 = 0xA000;
 const CARTRIDGE_ADDR2_END: u16 = 0xBFFF;
 const TIMER_ADDR_START: u16 = 0xFF04;
 const TIMER_ADDR_END: u16 = 0xFF07;
+const JOYPAD_ADDR: u16 = 0xFF00;
 
 // ppu
 const PPU_REGISTER_START: u16 = 0xFF40;
@@ -35,6 +37,7 @@ pub struct Bus {
     pub hram: HRam,
     pub ppu: Ppu,
     pub timer: Timer,
+    pub joypad: Joypad,
     cartridge: Cartridge,
 }
 
@@ -46,6 +49,7 @@ impl Bus {
             hram: HRam::new(),
             ppu: Ppu::new(lcd),
             timer: Timer::default(),
+            joypad: Joypad::new(),
             cartridge,
         }
     }
@@ -67,6 +71,7 @@ impl Bus {
             PPU_REGISTER_START..=PPU_REGISTER_END => self.ppu.read(addr),
             VRAM_ADDR_START..=VRAM_ADDR_END => self.ppu.read(addr),
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.read(addr),
+            JOYPAD_ADDR => self.joypad.read(),
             0xFF0F | 0xFFFF => interrupts.read(addr),
             _ => 0xFF,
         }
@@ -88,6 +93,7 @@ impl Bus {
             PPU_REGISTER_START..=PPU_REGISTER_END => self.ppu.write(addr, val),
             VRAM_ADDR_START..=VRAM_ADDR_END => self.ppu.write(addr, val),
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.write(addr, val),
+            JOYPAD_ADDR => self.joypad.write(val),
             0xFF0F | 0xFFFF => interrupts.write(addr, val),
             _ => (),
         }
