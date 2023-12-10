@@ -1,4 +1,4 @@
-use crate::gameboy::CPU_CLOCK_HZ;
+use crate::{audio, gameboy::CPU_CLOCK_HZ};
 
 mod channel1;
 mod channel2;
