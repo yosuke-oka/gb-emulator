@@ -8,7 +8,7 @@ pub struct Channel4 {
     frequency_timer: u16,
     length_timer: u8,
     length_enabled: bool,
-    enabled: bool,
+    pub enabled: bool,
     period: u8,
     period_timer: u8,
     current_volume: u8,
