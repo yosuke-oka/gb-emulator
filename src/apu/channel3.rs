@@ -3,7 +3,7 @@ use std::cmp::min;
 use super::Channel;
 
 #[derive(Default)]
-struct Channel3 {
+pub struct Channel3 {
     dac_enabled: bool,
     frequency: u16,
     frequency_timer: u16,
@@ -16,6 +16,12 @@ struct Channel3 {
     output_level: u8,
 }
 impl Channel3 {
+    pub fn emulate_fs_cycle(&mut self, fs: u8) {
+        if fs & 1 == 0 {
+            self.length();
+        }
+    }
+
     fn length(&mut self) {
         if self.length_enabled && self.length_timer > 0 {
             self.length_timer -= 1;

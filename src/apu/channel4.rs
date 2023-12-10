@@ -3,7 +3,7 @@ use std::cmp::max;
 use super::Channel;
 
 #[derive(Default)]
-struct Channel4 {
+pub struct Channel4 {
     dac_enabled: bool,
     frequency_timer: u16,
     length_timer: u8,
@@ -21,6 +21,15 @@ struct Channel4 {
 }
 
 impl Channel4 {
+    pub fn emulate_fs_cycle(&mut self, fs: u8) {
+        if fs & 1 == 0 {
+            self.length();
+        }
+        if fs == 7 {
+            self.envelope();
+        }
+    }
+
     fn length(&mut self) {
         if self.length_enabled && self.length_timer > 0 {
             self.length_timer -= 1;

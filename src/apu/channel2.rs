@@ -1,7 +1,7 @@
 use super::{Channel, WAVE_DUTY};
 
 #[derive(Default)]
-struct Channel2 {
+pub struct Channel2 {
     dac_enabled: bool,
     frequency: u16,
     frequency_timer: u16,
@@ -19,6 +19,15 @@ struct Channel2 {
 }
 
 impl Channel2 {
+    pub fn emulate_fs_cycle(&mut self, fs: u8) {
+        if fs & 1 == 0 {
+            self.length();
+        }
+        if fs == 7 {
+            self.envelope();
+        }
+    }
+
     // 一定時間後にチャンネルを無効にする
     fn length(&mut self) {
         if self.length_enabled && self.length_timer > 0 {

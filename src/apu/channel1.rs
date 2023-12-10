@@ -2,7 +2,7 @@ use super::{Channel, WAVE_DUTY};
 use std::cmp::min;
 
 #[derive(Default)]
-struct Channel1 {
+pub struct Channel1 {
     dac_enabled: bool,
     frequency: u16,
     frequency_timer: u16,
@@ -25,6 +25,18 @@ struct Channel1 {
 }
 
 impl Channel1 {
+    pub fn emulate_fs_cycle(&mut self, fs: u8) {
+        if fs & 1 == 0 {
+            self.length();
+        }
+        if fs == 7 {
+            self.envelope();
+        }
+        if fs == 6 || fs == 6 {
+            self.sweep();
+        }
+    }
+
     // 一定時間後にチャンネルを無効にする
     fn length(&mut self) {
         if self.length_enabled && self.length_timer > 0 {
