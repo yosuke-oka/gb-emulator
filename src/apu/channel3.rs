@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use super::{Channel, WAVE_DUTY};
+use super::Channel;
 
 #[derive(Default)]
 struct Channel3 {
@@ -30,6 +30,7 @@ impl Channel for Channel3 {
             self.frequency_timer = (2048 - self.frequency) * 2;
             self.wave_duty_position = (self.wave_duty_position + 1) & 31;
         }
+        self.frequency_timer -= 1;
     }
 
     fn dac_output(&self) -> f32 {

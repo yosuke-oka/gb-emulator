@@ -51,6 +51,7 @@ impl Channel for Channel2 {
             self.frequency_timer = (2048 - self.frequency) * 4;
             self.wave_duty_position = (self.wave_duty_position + 1) & 7;
         }
+        self.frequency_timer -= 1;
     }
 
     fn dac_output(&self) -> f32 {
