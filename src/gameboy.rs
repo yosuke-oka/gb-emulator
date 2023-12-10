@@ -3,7 +3,8 @@ use sdl2::{self, event::Event, keyboard::Keycode, Sdl};
 use std::time;
 
 use crate::{
-    bootrom::BootRom, bus::Bus, cartridge::Cartridge, cpu::Cpu, joypad::Buttons, lcd::LCD,
+    audio::Audio, bootrom::BootRom, bus::Bus, cartridge::Cartridge, cpu::Cpu, joypad::Buttons,
+    lcd::LCD,
 };
 
 pub const CPU_CLOCK_HZ: u128 = 4_194_304;
@@ -39,9 +40,11 @@ fn key_to_joy(keycode: Keycode) -> Option<Buttons> {
 impl GameBoy {
     pub fn new(bootrom: BootRom, cartridge: Cartridge) -> Self {
         let sdl = sdl2::init().expect("failed to initialize SDL");
+        let lcd = LCD::new(&sdl, 4);
+        let audio = Audio::new(&sdl);
         Self {
             cpu: Cpu::new(),
-            bus: Bus::new(bootrom, cartridge, LCD::new(&sdl, 4)),
+            bus: Bus::new(bootrom, cartridge, lcd, audio),
             sdl,
         }
     }

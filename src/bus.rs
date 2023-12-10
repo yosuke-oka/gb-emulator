@@ -1,3 +1,5 @@
+use crate::apu::Apu;
+use crate::audio::Audio;
 use crate::bootrom::BootRom;
 use crate::cartridge::Cartridge;
 use crate::cpu::interrupt::Interrupts;
@@ -36,18 +38,20 @@ pub struct Bus {
     pub wram: WRam,
     pub hram: HRam,
     pub ppu: Ppu,
+    pub apu: Apu,
     pub timer: Timer,
     pub joypad: Joypad,
     cartridge: Cartridge,
 }
 
 impl Bus {
-    pub fn new(bootrom: BootRom, cartridge: Cartridge, lcd: LCD) -> Self {
+    pub fn new(bootrom: BootRom, cartridge: Cartridge, lcd: LCD, audio: Audio) -> Self {
         Self {
             bootrom,
             wram: WRam::new(),
             hram: HRam::new(),
             ppu: Ppu::new(lcd),
+            apu: Apu::new(audio),
             timer: Timer::default(),
             joypad: Joypad::new(),
             cartridge,
@@ -69,6 +73,7 @@ impl Bus {
             CARTRIDGE_ADDR2_START..=CARTRIDGE_ADDR2_END => self.cartridge.read(addr),
             TIMER_ADDR_START..=TIMER_ADDR_END => self.timer.read(addr),
             PPU_REGISTER_START..=PPU_REGISTER_END => self.ppu.read(addr),
+            0xFF10..=0xFF26 | 0xFF30..=0xFF3F => self.apu.read(addr),
             VRAM_ADDR_START..=VRAM_ADDR_END => self.ppu.read(addr),
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.read(addr),
             JOYPAD_ADDR => self.joypad.read(),
@@ -91,6 +96,7 @@ impl Bus {
             CARTRIDGE_ADDR2_START..=CARTRIDGE_ADDR2_END => self.cartridge.write(addr, val),
             TIMER_ADDR_START..=TIMER_ADDR_END => self.timer.write(addr, val),
             PPU_REGISTER_START..=PPU_REGISTER_END => self.ppu.write(addr, val),
+            0xFF10..=0xFF26 | 0xFF30..=0xFF3F => self.apu.write(addr, val),
             VRAM_ADDR_START..=VRAM_ADDR_END => self.ppu.write(addr, val),
             OAM_ADDR_START..=OAM_ADDR_END => self.ppu.write(addr, val),
             JOYPAD_ADDR => self.joypad.write(val),
@@ -101,6 +107,7 @@ impl Bus {
 
     pub fn tick(&mut self, interrupts: &mut Interrupts) {
         self.timer.emulate_cycle(interrupts);
+        self.apu.emulate_cycle();
         if let Some(addr) = self.ppu.oam_dma {
             self.ppu.oam_dma_emulate_cycle(self.read(interrupts, addr));
             // TODO: 実装があっているか不明かつ、ppuに処理を移動したい

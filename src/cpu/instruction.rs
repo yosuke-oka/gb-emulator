@@ -5,8 +5,8 @@ use crate::cpu::{operand::Imm8, Cpu};
 use super::operand::{Cond, Reg16, IO16, IO8};
 
 impl Cpu {
-    pub fn nop(&mut self, _: &mut Bus) {
-        // nop
+    pub fn nop(&mut self, bus: &mut Bus) {
+        self.tick(bus)
     }
 
     // stop
