@@ -20,7 +20,31 @@ struct Channel4 {
     divisor_code: u16,
 }
 
-impl Channel4 {}
+impl Channel4 {
+    fn length(&mut self) {
+        if self.length_enabled && self.length_timer > 0 {
+            self.length_timer -= 1;
+            self.enabled &= self.length_timer > 0;
+        }
+    }
+
+    fn envelope(&mut self) {
+        if self.period != 0 {
+            if self.period_timer > 0 {
+                self.period_timer -= 1;
+            }
+
+            if self.period_timer == 0 {
+                self.period_timer = self.period;
+                if self.current_volume < 0xF && self.is_upwards {
+                    self.current_volume += 1;
+                } else if self.current_volume > 0x0 && !self.is_upwards {
+                    self.current_volume -= 1;
+                }
+            }
+        }
+    }
+}
 
 impl Channel for Channel4 {
     fn emulate_t_cycle(&mut self) {
